@@ -1,0 +1,3 @@
+[submodule "netkit-dtls-multipath/shared/root/cyassl"]
+	path = netkit-dtls-multipath/shared/root/cyassl
+	url = git@bitbucket.org:multipathtor/cyassl.git
