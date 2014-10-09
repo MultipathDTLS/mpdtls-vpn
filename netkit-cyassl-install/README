@@ -1,0 +1,7 @@
+=== NETKIT LAB INSTALL PROCESS ===
+
+WARNING - This lab is solely intended to be run ONCE after the Filesystem compilation and BEFORE any other lab. 
+
+This lab performs the last preparation steps that cannot be executed during the compilation of the Filesystem,
+such as the CyaSSL configuration and compilation. This is why the base filesystem is directly mounted, instead
+of using the traditional CoW mode of Netkit!
