@@ -1,5 +1,0 @@
-echo "Configuring CyaSSL with DTLS ..."
-cd /root/cyassl
-./configure --enable-dtls
-make
-make install
