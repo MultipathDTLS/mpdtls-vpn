@@ -12,6 +12,7 @@ int main(int argc, char *argv[]){
     /** Pointers to be freed later **/
 
     CyaSSL_Init();// Initialize CyaSSL
+    //CyaSSL_Debugging_ON(); //enable debug
     CYASSL* ssl = NULL;
     CYASSL_CTX* ctx = NULL;
     sockaddr_in *serv_addr = NULL;
@@ -61,6 +62,16 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
                    exit(EXIT_FAILURE);
 
                }
+                /* We add 2 addresses manually */
+                if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.1") !=SSL_SUCCESS) {
+                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+                    exit(EXIT_FAILURE);
+                }
+
+                if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
+                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+                    exit(EXIT_FAILURE);
+                }
 
                 CyaSSL_set_fd(ssl, clientfd);
 
@@ -73,6 +84,7 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
                     close(clientfd);
                     break;
                 }
+                printf("Check for mpdtls extension : %d \n", CyaSSL_mpdtls(ssl));
                 printf("Server child waiting for incoming msg \n");
                 readIncoming(ssl);
                 printf("Server child exiting \n");
@@ -166,7 +178,7 @@ CYASSL_CTX* InitiateDTLS(CYASSL_CTX *ctx, sockaddr_in *serv_addr){
 }
 
 /**
-* Method to initialize the DTLS handshake and keys exchange
+* Method to initialize the connection between client and server (learn client address)
 */
 int udp_read_connect(int sockfd)
 {

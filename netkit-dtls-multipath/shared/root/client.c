@@ -110,6 +110,8 @@ CYASSL* InitiateDTLS(char *ip_serv, CYASSL_CTX *ctx, sockaddr_in *serv_addr, int
         perror("SSL_connect failed");
     }
 
+    printf("Check for MPDTLS compatibility : %d \n",CyaSSL_mpdtls(ssl));
+
 
     return ssl;
 }
