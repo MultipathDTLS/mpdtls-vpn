@@ -5,6 +5,8 @@
 * Date : 14/10/2014
 *
 */
+//#define DEBUG
+
 #include "server.h"
 
 int main(int argc, char *argv[]){
@@ -47,10 +49,12 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
             perror("udp accept failed");
             break;
         }else{
+#ifndef DEBUG
             if((childpid = fork())<0){
                 perror("Error on fork");
                 exit(EXIT_FAILURE);
             }else if(childpid == 0){
+#endif
                 //Dont know why but if you close the server socket, nothing works
                 //printf("Close socket %d (child) \n",sockfd);
                 //close(sockfd);
@@ -62,6 +66,7 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
                    exit(EXIT_FAILURE);
 
                }
+
                 /* We add 2 addresses manually */
                 if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.1") !=SSL_SUCCESS) {
                     fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
@@ -72,6 +77,9 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
                     fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
                 }
+
+                CyaSSL_mpdtls_new_addr(ssl, "127.0.0.3");
+                CyaSSL_mpdtls_new_addr(ssl, "127.0.0.4");
 
                 CyaSSL_set_fd(ssl, clientfd);
 
@@ -90,9 +98,11 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
                 printf("Server child exiting \n");
                 close(clientfd);
                 break;
-            }else{
+#ifndef DEBUG
+            } else {
                 close(clientfd);
             }
+#endif
         }
         printf("Close socket %d (parent) \n",sockfd);
         close(sockfd);

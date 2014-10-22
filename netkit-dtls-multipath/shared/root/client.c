@@ -11,6 +11,7 @@ int main(int argc, char *argv[]){
     /** Pointers to be freed later **/
 
     CyaSSL_Init();// Initialize CyaSSL
+    CyaSSL_Debugging_ON(); //enable debug
     CYASSL* ssl;
     CYASSL_CTX* ctx = NULL;
     sockaddr_in *serv_addr = NULL;

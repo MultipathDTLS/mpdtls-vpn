@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS=-Wall -std=c99 -DCYASSL_DTLS
+CFLAGS=-Wall -std=c99 -DCYASSL_DTLS -g
 LIBS=-lcyassl -lpthread
 SOURCES_C = client.c
 SOURCES_S = server.c
