@@ -14,7 +14,7 @@ int main(int argc, char *argv[]){
     /** Pointers to be freed later **/
 
     CyaSSL_Init();// Initialize CyaSSL
-    //CyaSSL_Debugging_ON(); //enable debug
+    CyaSSL_Debugging_ON(); //enable debug
     CYASSL* ssl = NULL;
     CYASSL_CTX* ctx = NULL;
     sockaddr_in *serv_addr = NULL;
@@ -43,7 +43,7 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
 
         sockfd = createSocket(serv_addr);
         printf("Current socket : %d \n",sockfd);
-        //handshake
+
         clientfd = udp_read_connect(sockfd);
         if (clientfd == -1){
             perror("udp accept failed");
@@ -67,22 +67,9 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
 
                }
 
-                /* We add 2 addresses manually */
-                if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.1") !=SSL_SUCCESS) {
-                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-                }
-
-                if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
-                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-                }
-
-                CyaSSL_mpdtls_new_addr(ssl, "127.0.0.3");
-                CyaSSL_mpdtls_new_addr(ssl, "127.0.0.4");
-
                 CyaSSL_set_fd(ssl, clientfd);
 
+                //handshake
                 if (CyaSSL_accept(ssl) != SSL_SUCCESS) {
                     char errorString[80];
                     int err = CyaSSL_get_error(ssl, 0);
@@ -92,9 +79,24 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
                     close(clientfd);
                     break;
                 }
+
+                /*
+                if (CyaSSL_mpdtls_new_addr(ssl, "::1") !=SSL_SUCCESS) {
+                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+                    exit(EXIT_FAILURE);
+                }
+                */
+
+                /* We add 2 addresses manually */
+                if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
+                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+                    exit(EXIT_FAILURE);
+                }
+                CyaSSL_write(ssl, "ok", strlen("ok"));
+
                 printf("Check for mpdtls extension : %d \n", CyaSSL_mpdtls(ssl));
                 printf("Server child waiting for incoming msg \n");
-                readIncoming(ssl);
+                readIncoming(ssl,clientfd);
                 printf("Server child exiting \n");
                 close(clientfd);
                 break;
@@ -142,7 +144,7 @@ int createSocket(sockaddr_in *serv_addr){
     return sockfd;
 }
 
-int readIncoming(CYASSL *ssl){
+int readIncoming(CYASSL *ssl, int sd){
     char mesg[1000];
     int n;
     while((n = CyaSSL_read(ssl, mesg, sizeof(mesg)-1)) > 0){

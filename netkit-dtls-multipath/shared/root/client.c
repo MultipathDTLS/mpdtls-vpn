@@ -18,6 +18,15 @@ int main(int argc, char *argv[]){
     int sockfd;
 
     ssl = InitiateDTLS(ip_serv,ctx,serv_addr,&sockfd);
+    char mesg[1000];
+    CyaSSL_read(ssl, mesg, sizeof(mesg)-1);
+    
+    if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.3") !=SSL_SUCCESS) {
+                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+                    exit(EXIT_FAILURE);
+                
+    }
+    
     sendLines(ssl);
 
     close(sockfd);
@@ -91,14 +100,17 @@ CYASSL* InitiateDTLS(char *ip_serv, CYASSL_CTX *ctx, sockaddr_in *serv_addr, int
 
    }
 
-    CyaSSL_set_fd(ssl, *sockfd);
-
     serv_addr = malloc(sizeof(sockaddr_in));
     bzero(serv_addr, sizeof(sockaddr_in));
 
     serv_addr->sin_family = AF_INET;
     serv_addr->sin_port = htons(PORT_NUMBER);
     serv_addr->sin_addr.s_addr = inet_addr(ip_serv);
+
+    //connect(*sockfd, (struct sockaddr*) serv_addr, sizeof(sockaddr_in));
+
+    CyaSSL_set_fd(ssl, *sockfd);
+
 
     if(CyaSSL_dtls_set_peer(ssl, (struct sockaddr *)serv_addr, sizeof(sockaddr_in))!=SSL_SUCCESS){
             perror("Error while trying to define the peer for the connection");

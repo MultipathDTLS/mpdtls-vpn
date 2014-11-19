@@ -8,7 +8,7 @@ CYASSL_CTX* InitiateDTLS(CYASSL_CTX *ctx, sockaddr_in *serv_addr);
 * Read all the data sent by a particular client on this ssl socket
 * return if 'exit' is sended
 */
-int readIncoming(CYASSL *ssl);
+int readIncoming(CYASSL *ssl, int);
 
 /**
 * Wait for clients to connect and initiate the connection
