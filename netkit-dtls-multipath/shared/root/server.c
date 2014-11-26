@@ -5,11 +5,16 @@
 * Date : 14/10/2014
 *
 */
-//#define DEBUG
+#define DEBUG
 
 #include "server.h"
 
 int main(int argc, char *argv[]){
+
+    unsigned short family = AF_INET;
+    if(argc > 1){
+        family = AF_INET6;
+    }
 
     /** Pointers to be freed later **/
 
@@ -17,10 +22,10 @@ int main(int argc, char *argv[]){
     CyaSSL_Debugging_ON(); //enable debug
     CYASSL* ssl = NULL;
     CYASSL_CTX* ctx = NULL;
-    sockaddr_in *serv_addr = NULL;
+    sockaddr *serv_addr = NULL;
 
-    ctx = InitiateDTLS(ctx,serv_addr);
-    answerClients(ctx,ssl,serv_addr);
+    ctx = InitiateDTLS(ctx);
+    answerClients(ctx,ssl,serv_addr, family);
 
     printf("Shutdown server and clean...");
     free(serv_addr);
@@ -32,7 +37,7 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
+void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr *serv_addr, unsigned short family){
     int shutdown = 0;
     int clientfd;
     int childpid;
@@ -41,10 +46,10 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
     while (!shutdown) {
         ssl = 0;
 
-        sockfd = createSocket(serv_addr);
+        sockfd = createSocket(serv_addr, family);
         printf("Current socket : %d \n",sockfd);
 
-        clientfd = udp_read_connect(sockfd);
+        clientfd = udp_read_connect(sockfd, family);
         if (clientfd == -1){
             perror("udp accept failed");
             break;
@@ -87,12 +92,15 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
                 }
                 */
 
-                /* We add 2 addresses manually */
+                //*
                 if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
                     fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
                 }
+                //*/
+                
                 CyaSSL_write(ssl, "ok", strlen("ok"));
+
 
                 printf("Check for mpdtls extension : %d \n", CyaSSL_mpdtls(ssl));
                 printf("Server child waiting for incoming msg \n");
@@ -112,22 +120,39 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr_in *serv_addr){
 
 }
 /**
-* Create the socket with adress serv_addr
+* Create the socket with adress serv_addr and family family (AF_INET or AF_INET6)
 * This socket will be reusable
 */
-int createSocket(sockaddr_in *serv_addr){
+int createSocket(sockaddr *serv_addr, unsigned short family){
 
     int sockfd;
+    socklen_t sz = (family==AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
 
-    serv_addr = malloc(sizeof(sockaddr_in));
-    bzero(serv_addr, sizeof(sockaddr_in));
+    if (family == AF_INET) {
+        sockaddr_in *addr = malloc(sizeof(sockaddr_in));
+        bzero(addr, sizeof(sockaddr_in));
 
-    serv_addr->sin_family = AF_INET;
-    serv_addr->sin_port = htons(PORT_NUMBER);
-    serv_addr->sin_addr.s_addr = INADDR_ANY;
+        addr->sin_family = AF_INET;
+        addr->sin_port = htons(PORT_NUMBER);
+        addr->sin_addr.s_addr = INADDR_ANY;
+
+        serv_addr = (sockaddr*) addr;
+
+    }else if(family == AF_INET6) {
+
+        sockaddr_in6 *addr = malloc(sizeof(sockaddr_in6));
+        bzero(addr, sizeof(sockaddr_in6));
+
+        addr->sin6_family = AF_INET6;
+        addr->sin6_port = htons(PORT_NUMBER);
+        addr->sin6_addr = in6addr_any;
+
+        serv_addr = (sockaddr*) addr;
+
+    }
 
             // create the socket
-    if((sockfd=socket(AF_INET,SOCK_DGRAM,0))<0) {
+    if((sockfd=socket(family,SOCK_DGRAM,0))<0) {
         fprintf(stderr,"Error opening socket");
         exit(EXIT_FAILURE);
     }
@@ -138,7 +163,7 @@ int createSocket(sockaddr_in *serv_addr){
 
 
         //bind server socket to INADDR_ANY
-    if (bind(sockfd, (struct sockaddr *) serv_addr,sizeof(sockaddr_in)) < 0)
+    if (bind(sockfd, serv_addr,sz) < 0)
             perror("ERROR on binding");
 
     return sockfd;
@@ -161,7 +186,7 @@ int readIncoming(CYASSL *ssl, int sd){
 
 /** INITIATE the connection and return the CTX object corresponding
 **/
-CYASSL_CTX* InitiateDTLS(CYASSL_CTX *ctx, sockaddr_in *serv_addr){
+CYASSL_CTX* InitiateDTLS(CYASSL_CTX *ctx){
 
    CYASSL_METHOD* method = CyaDTLSv1_2_server_method();
    if ( (ctx = CyaSSL_CTX_new(method)) == NULL){
@@ -192,18 +217,29 @@ CYASSL_CTX* InitiateDTLS(CYASSL_CTX *ctx, sockaddr_in *serv_addr){
 /**
 * Method to initialize the connection between client and server (learn client address)
 */
-int udp_read_connect(int sockfd)
+int udp_read_connect(int sockfd, unsigned short family)
 {
-    sockaddr_in cliaddr;
+    sockaddr *cliaddr;
     char          b[1500];
     int           n;
-    socklen_t     len = sizeof(cliaddr);
+    socklen_t     len = 0;
 
-    n = (int)recvfrom(sockfd, (char*)b, sizeof(b), MSG_PEEK,
-                      (struct sockaddr*)&cliaddr, &len);
+    //build answer structure according to what we want to receive
+    if(family == AF_INET){
+        sockaddr_in addr;
+        len = sizeof(sockaddr_in);
+        bzero(&addr, len);
+        cliaddr = (sockaddr*) &addr;
+    }else{
+        sockaddr_in6 addr;
+        len = sizeof(sockaddr_in6);
+        bzero(&addr, len);
+        cliaddr = (sockaddr*) &addr;
+    }
+
+    n = (int)recvfrom(sockfd, (char*)b, sizeof(b), MSG_PEEK, cliaddr, &len);
     if (n > 0) {
-        if (connect(sockfd, (const struct sockaddr*)&cliaddr,
-                    sizeof(cliaddr)) != 0)
+        if (connect(sockfd, cliaddr, len) != 0)
             perror("udp connect failed");
     }
     else{

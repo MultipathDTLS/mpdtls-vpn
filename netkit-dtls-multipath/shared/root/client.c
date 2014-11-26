@@ -2,10 +2,32 @@
 
 
 int main(int argc, char *argv[]){
+    int error;
+    struct addrinfo *res;
+    struct addrinfo hints;
+    sockaddr *addr;
     char *ip_serv = "127.0.0.1"; //default server address
     
     if(argc > 1){
         ip_serv = argv[1];
+    }
+
+    /* getaddrinfo() case.  It can handle multiple addresses. */
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    error = getaddrinfo(ip_serv, NULL, &hints, &res);
+    if (error) {
+        printf(gai_strerror(error));
+        return EXIT_FAILURE;
+    } else {
+        if(res) { //we take only the first one
+             addr = (struct sockaddr *) res->ai_addr;
+             printf("Family detected : %d \n",addr->sa_family);
+        }else{
+            printf("No address found \n");
+            return EXIT_FAILURE;
+        }
     }
 
     /** Pointers to be freed later **/
@@ -14,23 +36,24 @@ int main(int argc, char *argv[]){
     CyaSSL_Debugging_ON(); //enable debug
     CYASSL* ssl;
     CYASSL_CTX* ctx = NULL;
-    sockaddr_in *serv_addr = NULL;
     int sockfd;
 
-    ssl = InitiateDTLS(ip_serv,ctx,serv_addr,&sockfd);
+    ssl = InitiateDTLS(ctx,addr,&sockfd);
     char mesg[1000];
     CyaSSL_read(ssl, mesg, sizeof(mesg)-1);
-    
+
+    //Add new addresses if needed
+    //*
     if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.3") !=SSL_SUCCESS) {
                     fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
                 
     }
+    //*/
     
     sendLines(ssl);
 
     close(sockfd);
-    free(serv_addr);
     CyaSSL_free(ssl); 
     CyaSSL_CTX_free(ctx);
     CyaSSL_Cleanup();
@@ -57,7 +80,7 @@ void sendLines(CYASSL* ssl){
 
 /** INITIATE the connection and return the ssl object corresponding
 **/
-CYASSL* InitiateDTLS(char *ip_serv, CYASSL_CTX *ctx, sockaddr_in *serv_addr, int *sockfd){
+CYASSL* InitiateDTLS(CYASSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
 
     CYASSL* ssl;
 
@@ -86,7 +109,7 @@ CYASSL* InitiateDTLS(char *ip_serv, CYASSL_CTX *ctx, sockaddr_in *serv_addr, int
    }
       
        // create the socket
-    if((*sockfd=socket(AF_INET,SOCK_DGRAM,0))<0) {
+    if((*sockfd=socket(serv_addr->sa_family,SOCK_DGRAM,0))<0) {
         fprintf(stderr,"Error opening socket");
         exit(EXIT_FAILURE);
     }
@@ -100,19 +123,22 @@ CYASSL* InitiateDTLS(char *ip_serv, CYASSL_CTX *ctx, sockaddr_in *serv_addr, int
 
    }
 
-    serv_addr = malloc(sizeof(sockaddr_in));
-    bzero(serv_addr, sizeof(sockaddr_in));
+   //we put the right port
 
-    serv_addr->sin_family = AF_INET;
-    serv_addr->sin_port = htons(PORT_NUMBER);
-    serv_addr->sin_addr.s_addr = inet_addr(ip_serv);
-
-    //connect(*sockfd, (struct sockaddr*) serv_addr, sizeof(sockaddr_in));
+   unsigned int sz = 0;
+   if(serv_addr->sa_family == AF_INET){
+        sz = sizeof(struct sockaddr_in);
+        ((sockaddr_in*) serv_addr)->sin_port = htons(PORT_NUMBER);
+   }else if(serv_addr->sa_family == AF_INET6){
+        sz = sizeof(struct sockaddr_in6);
+        ((sockaddr_in6*) serv_addr)->sin6_port = htons(PORT_NUMBER);
+   }
+    
 
     CyaSSL_set_fd(ssl, *sockfd);
 
 
-    if(CyaSSL_dtls_set_peer(ssl, (struct sockaddr *)serv_addr, sizeof(sockaddr_in))!=SSL_SUCCESS){
+    if(CyaSSL_dtls_set_peer(ssl, serv_addr, sz)!=SSL_SUCCESS){
             perror("Error while trying to define the peer for the connection");
         }
 

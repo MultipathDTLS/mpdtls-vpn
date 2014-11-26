@@ -11,8 +11,11 @@
 #include <netinet/in.h>
 #include <cyassl/ssl.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #define PORT_NUMBER 6586
 #define SOCKET_T int
 
 typedef struct sockaddr_in sockaddr_in;
+typedef struct sockaddr sockaddr;
+typedef struct sockaddr_in6 sockaddr_in6;
