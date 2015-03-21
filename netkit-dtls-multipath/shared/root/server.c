@@ -5,7 +5,7 @@
 * Date : 14/10/2014
 *
 */
-#define DEBUG
+//#define DEBUG
 
 #include "server.h"
 
@@ -18,10 +18,10 @@ int main(int argc, char *argv[]){
 
     /** Pointers to be freed later **/
 
-    CyaSSL_Init();// Initialize CyaSSL
-    CyaSSL_Debugging_ON(); //enable debug
-    CYASSL* ssl = NULL;
-    CYASSL_CTX* ctx = NULL;
+    wolfSSL_Init();// Initialize wolfSSL
+    wolfSSL_Debugging_ON(); //enable debug
+    WOLFSSL* ssl = NULL;
+    WOLFSSL_CTX* ctx = NULL;
     sockaddr *serv_addr = NULL;
 
     ctx = InitiateDTLS(ctx);
@@ -29,15 +29,15 @@ int main(int argc, char *argv[]){
 
     printf("Shutdown server and clean...");
     free(serv_addr);
-    CyaSSL_shutdown(ssl);
-    CyaSSL_free(ssl); 
-    CyaSSL_CTX_free(ctx);
-    CyaSSL_Cleanup();
+    wolfSSL_shutdown(ssl);
+    wolfSSL_free(ssl); 
+    wolfSSL_CTX_free(ctx);
+    wolfSSL_Cleanup();
     printf(" DONE\n");
     return 0;
 }
 
-void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr *serv_addr, unsigned short family){
+void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family){
     int shutdown = 0;
     int clientfd;
     int childpid;
@@ -64,45 +64,45 @@ void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr *serv_addr, unsigned s
                 //printf("Close socket %d (child) \n",sockfd);
                 //close(sockfd);
                 printf("Child created with socket %d \n",clientfd);               
-                if( (ssl = CyaSSL_new(ctx)) == NULL) {
+                if( (ssl = wolfSSL_new(ctx)) == NULL) {
 
-                   fprintf(stderr, "CyaSSL_new error SSL \n" );
+                   fprintf(stderr, "wolfSSL_new error SSL \n" );
 
                    exit(EXIT_FAILURE);
 
                }
 
-                CyaSSL_set_fd(ssl, clientfd);
+                wolfSSL_set_fd(ssl, clientfd);
 
                 //handshake
-                if (CyaSSL_accept(ssl) != SSL_SUCCESS) {
+                if (wolfSSL_accept(ssl) != SSL_SUCCESS) {
                     char errorString[80];
-                    int err = CyaSSL_get_error(ssl, 0);
-                    CyaSSL_ERR_error_string(err, errorString);
+                    int err = wolfSSL_get_error(ssl, 0);
+                    wolfSSL_ERR_error_string(err, errorString);
                     printf("SSL_accept failed : %s \n",errorString);
-                    CyaSSL_free(ssl);
+                    wolfSSL_free(ssl);
                     close(clientfd);
                     break;
                 }
 
                 /*
-                if (CyaSSL_mpdtls_new_addr(ssl, "::1") !=SSL_SUCCESS) {
-                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+                if (wolfSSL_mpdtls_new_addr(ssl, "::1") !=SSL_SUCCESS) {
+                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
                 }
                 */
 
                 //*
-                if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
-                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+                if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
+                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
                 }
                 //*/
                 
-                CyaSSL_write(ssl, "ok", strlen("ok"));
+                wolfSSL_write(ssl, "ok", strlen("ok"));
 
 
-                printf("Check for mpdtls extension : %d \n", CyaSSL_mpdtls(ssl));
+                printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
                 printf("Server child waiting for incoming msg \n");
                 readIncoming(ssl,clientfd);
                 printf("Server child exiting \n");
@@ -169,16 +169,16 @@ int createSocket(sockaddr *serv_addr, unsigned short family){
     return sockfd;
 }
 
-int readIncoming(CYASSL *ssl, int sd){
+int readIncoming(WOLFSSL *ssl, int sd){
     char mesg[1000];
     int n;
-    while((n = CyaSSL_read(ssl, mesg, sizeof(mesg)-1)) > 0){
-          printf("-------------------------------------------------------\n");
-          mesg[n] = 0;
-          printf("Received the following:\n");
-          printf("%s",mesg);
-          printf("-------------------------------------------------------\n");
-          if(strcmp(mesg,"exit\n")==0)
+    while((n = wolfSSL_read(ssl, mesg, sizeof(mesg)-1)) > 0){
+        printf("-------------------------------------------------------\n");
+        mesg[n] = 0;
+        printf("Received the following:\n");
+        printf("%s",mesg);
+        printf("-------------------------------------------------------\n");
+        if(strcmp(mesg,"exit\n")==0)
             break;
     }
     return (strcmp(mesg,"exit\n")==0);
@@ -186,28 +186,28 @@ int readIncoming(CYASSL *ssl, int sd){
 
 /** INITIATE the connection and return the CTX object corresponding
 **/
-CYASSL_CTX* InitiateDTLS(CYASSL_CTX *ctx){
+WOLFSSL_CTX* InitiateDTLS(WOLFSSL_CTX *ctx){
 
-   CYASSL_METHOD* method = CyaDTLSv1_2_server_method();
-   if ( (ctx = CyaSSL_CTX_new(method)) == NULL){
-        fprintf(stderr, "CyaSSL_CTX_new error \n");
+   WOLFSSL_METHOD* method = wolfDTLSv1_2_server_method();
+   if ( (ctx = wolfSSL_CTX_new(method)) == NULL){
+        fprintf(stderr, "wolfSSL_CTX_new error \n");
         exit(EXIT_FAILURE);
    }
 
     //Certs
 
-    if (CyaSSL_CTX_use_certificate_file(ctx, "certs/server-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_certificate_file(ctx, "certs/server-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
             perror("can't load server cert file");
 
-    if (CyaSSL_CTX_use_PrivateKey_file(ctx, "certs/server-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_PrivateKey_file(ctx, "certs/server-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
             perror("can't load server key file, ");
 
-    if (CyaSSL_CTX_load_verify_locations(ctx, "certs/client-cert.pem", 0) != SSL_SUCCESS)
-            perror("can't load ca file, Please run from CyaSSL home dir");
+    if (wolfSSL_CTX_load_verify_locations(ctx, "certs/client-cert.pem", 0) != SSL_SUCCESS)
+            perror("can't load ca file, Please run from wolfSSL home dir");
 
     //Cipher suite
-    if(CyaSSL_CTX_set_cipher_list(ctx, "AES256-SHA")!=SSL_SUCCESS){
-        fprintf(stderr, "CYASSl Cipher List error \n");
+    if(wolfSSL_CTX_set_cipher_list(ctx, "AES256-SHA")!=SSL_SUCCESS){
+        fprintf(stderr, "WOLFSSl Cipher List error \n");
         exit(EXIT_FAILURE);
     }
 

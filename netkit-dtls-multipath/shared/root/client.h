@@ -4,6 +4,6 @@
 
 /** INITIATE the connection and return the ssl object corresponding
 **/
-CYASSL* InitiateDTLS(CYASSL_CTX *ctx, sockaddr *serv_addr, int *sockfd);
+WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd);
 
-void sendLines(CYASSL* ssl);
+void sendLines(WOLFSSL* ssl);

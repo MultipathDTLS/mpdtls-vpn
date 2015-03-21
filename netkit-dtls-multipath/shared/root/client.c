@@ -32,20 +32,20 @@ int main(int argc, char *argv[]){
 
     /** Pointers to be freed later **/
 
-    CyaSSL_Init();// Initialize CyaSSL
-    CyaSSL_Debugging_ON(); //enable debug
-    CYASSL* ssl;
-    CYASSL_CTX* ctx = NULL;
+    wolfSSL_Init();// Initialize wolfSSL
+    wolfSSL_Debugging_ON(); //enable debug
+    WOLFSSL* ssl;
+    WOLFSSL_CTX* ctx = NULL;
     int sockfd;
 
     ssl = InitiateDTLS(ctx,addr,&sockfd);
     char mesg[1000];
-    CyaSSL_read(ssl, mesg, sizeof(mesg)-1);
+    wolfSSL_read(ssl, mesg, sizeof(mesg)-1);
 
     //Add new addresses if needed
     //*
-    if (CyaSSL_mpdtls_new_addr(ssl, "127.0.0.3") !=SSL_SUCCESS) {
-                    fprintf(stderr, "CyaSSL_mpdtls_new_addr error \n" );
+    if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.3") !=SSL_SUCCESS) {
+                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
                 
     }
@@ -54,21 +54,37 @@ int main(int argc, char *argv[]){
     sendLines(ssl);
 
     close(sockfd);
-    CyaSSL_free(ssl); 
-    CyaSSL_CTX_free(ctx);
-    CyaSSL_Cleanup();
+    wolfSSL_free(ssl); 
+    wolfSSL_CTX_free(ctx);
+    wolfSSL_Cleanup();
     return 0;
 }
 
 /**
 * Send text input through the ssl object
 */
-void sendLines(CYASSL* ssl){
+void sendLines(WOLFSSL* ssl){
     char sendline[1000];
     while (fgets(sendline, 1000,stdin) != NULL)
     {
-        if(CyaSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
-            perror("CyaSSL_write failed");
+        if(strcmp(sendline, "add interface\n") == 0) {
+            printf("Adding new interface, please enter the new address: \n");
+            if (fgets(sendline, 1000,stdin) != NULL) {
+                if (wolfSSL_mpdtls_new_addr(ssl, sendline) !=SSL_SUCCESS) {
+                                fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
+                                exit(EXIT_FAILURE);
+                }
+            }
+            continue;
+        }
+        if(strcmp(sendline, "read pipe\n") == 0) {
+            printf("Reading from the pipes...\n");
+            wolfSSL_read(ssl, sendline, sizeof(sendline)-1);
+            printf("Read %s from the pipes\n", sendline);
+            continue;
+        }
+        if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
+            perror("wolfSSL_write failed");
         }
         printf("Sended\n");
         if(strcmp(sendline,"exit\n")==0){
@@ -80,30 +96,30 @@ void sendLines(CYASSL* ssl){
 
 /** INITIATE the connection and return the ssl object corresponding
 **/
-CYASSL* InitiateDTLS(CYASSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
+WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
 
-    CYASSL* ssl;
+    WOLFSSL* ssl;
 
-   CYASSL_METHOD* method = CyaDTLSv1_2_client_method();
-   if ( (ctx = CyaSSL_CTX_new(method)) == NULL){
-        fprintf(stderr, "CyaSSL_CTX_new error.\n");
+   WOLFSSL_METHOD* method = wolfDTLSv1_2_client_method();
+   if ( (ctx = wolfSSL_CTX_new(method)) == NULL){
+        fprintf(stderr, "wolfSSL_CTX_new error.\n");
 
         exit(EXIT_FAILURE);
    }
 
-   if (CyaSSL_CTX_set_cipher_list(ctx, "AES256-SHA") != SSL_SUCCESS)
+   if (wolfSSL_CTX_set_cipher_list(ctx, "AES256-SHA") != SSL_SUCCESS)
         perror("client can't set cipher list 1");
 
-    if (CyaSSL_CTX_use_certificate_file(ctx, "certs/client-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_certificate_file(ctx, "certs/client-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
         perror("can't load client cert file");
 
-    if (CyaSSL_CTX_use_PrivateKey_file(ctx, "certs/client-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_PrivateKey_file(ctx, "certs/client-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
         perror("can't load client key file, ");
 
-    if (CyaSSL_CTX_load_verify_locations(ctx,"certs/ca-cert.pem",NULL) != SSL_SUCCESS) {
+    if (wolfSSL_CTX_load_verify_locations(ctx,"certs/ca-cert.pem",NULL) != SSL_SUCCESS) {
 
        perror("Error loading certs/ca.crt, please check the file.\n");
-       printf("%d", CyaSSL_CTX_load_verify_locations(ctx,"./certs/ca.crt",0));
+       printf("%d", wolfSSL_CTX_load_verify_locations(ctx,"./certs/ca.crt",0));
        exit(EXIT_FAILURE);
 
    }
@@ -115,9 +131,9 @@ CYASSL* InitiateDTLS(CYASSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
     }
 
 
-   if( (ssl = CyaSSL_new(ctx)) == NULL) {
+   if( (ssl = wolfSSL_new(ctx)) == NULL) {
 
-       fprintf(stderr, "CyaSSL_new error.\n");
+       fprintf(stderr, "wolfSSL_new error.\n");
 
        exit(EXIT_FAILURE);
 
@@ -135,21 +151,21 @@ CYASSL* InitiateDTLS(CYASSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
    }
     
 
-    CyaSSL_set_fd(ssl, *sockfd);
+    wolfSSL_set_fd(ssl, *sockfd);
 
 
-    if(CyaSSL_dtls_set_peer(ssl, serv_addr, sz)!=SSL_SUCCESS){
+    if(wolfSSL_dtls_set_peer(ssl, serv_addr, sz)!=SSL_SUCCESS){
             perror("Error while trying to define the peer for the connection");
         }
 
-    if (CyaSSL_connect(ssl) != SSL_SUCCESS) {
-        int  err = CyaSSL_get_error(ssl, 0);
+    if (wolfSSL_connect(ssl) != SSL_SUCCESS) {
+        int  err = wolfSSL_get_error(ssl, 0);
         char buffer[1000];
-        printf("err = %d, %s\n", err, CyaSSL_ERR_error_string(err, buffer));
+        printf("err = %d, %s\n", err, wolfSSL_ERR_error_string(err, buffer));
         perror("SSL_connect failed");
     }
 
-    printf("Check for MPDTLS compatibility : %d \n",CyaSSL_mpdtls(ssl));
+    printf("Check for MPDTLS compatibility : %d \n",wolfSSL_mpdtls(ssl));
 
 
     return ssl;

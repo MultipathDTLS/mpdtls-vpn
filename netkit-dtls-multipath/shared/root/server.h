@@ -2,18 +2,18 @@
 
 /** Set up the server and return the ctx object corresponding
 **/
-CYASSL_CTX* InitiateDTLS(CYASSL_CTX *ctx);
+WOLFSSL_CTX* InitiateDTLS(WOLFSSL_CTX *ctx);
 
 /*
 * Read all the data sent by a particular client on this ssl socket
 * return if 'exit' is sended
 */
-int readIncoming(CYASSL *ssl, int);
+int readIncoming(WOLFSSL *ssl, int);
 
 /**
 * Wait for clients to connect and initiate the connection
 */
-void answerClients(CYASSL_CTX *ctx, CYASSL *ssl, sockaddr *serv_addr, unsigned short family);
+void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family);
 
 /**
 * Method to initialize the DTLS handshake and keys exchange

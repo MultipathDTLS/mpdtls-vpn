@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS=-Wall -std=gnu99 -DCYASSL_DTLS -g
-LIBS=-lcyassl -lpthread
+CFLAGS=-Wall -std=gnu99 -DWOLFSSL_DTLS -g
+LIBS=-lwolfssl -lpthread
 SOURCES_C = client.c
 SOURCES_S = server.c
 OBJECTS_C = $(SOURCES_C:.c=.o)

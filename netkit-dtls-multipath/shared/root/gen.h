@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <cyassl/ssl.h>
+#include <wolfssl/ssl.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
