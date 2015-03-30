@@ -43,7 +43,7 @@ int main(int argc, char *argv[]){
     wolfSSL_read(ssl, mesg, sizeof(mesg)-1);
 
     //Add new addresses if needed
-    //*
+    /*
     if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.3") !=SSL_SUCCESS) {
                     fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
@@ -82,6 +82,9 @@ void sendLines(WOLFSSL* ssl){
             wolfSSL_read(ssl, sendline, sizeof(sendline)-1);
             printf("Read %s from the pipes\n", sendline);
             continue;
+        }
+        if(strcmp(sendline,"stats\n")==0){
+            wolfSSL_mpdtls_stats(ssl);
         }
         if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
             perror("wolfSSL_write failed");
@@ -150,8 +153,9 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
         ((sockaddr_in6*) serv_addr)->sin6_port = htons(PORT_NUMBER);
    }
     
-
+    wolfSSL_UseMultiPathDTLS(ssl, 1);
     wolfSSL_set_fd(ssl, *sockfd);
+
 
 
     if(wolfSSL_dtls_set_peer(ssl, serv_addr, sz)!=SSL_SUCCESS){

@@ -5,7 +5,7 @@
 * Date : 14/10/2014
 *
 */
-//#define DEBUG
+#define DEBUG
 
 #include "server.h"
 
@@ -72,7 +72,9 @@ void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned
 
                }
 
+                wolfSSL_UseMultiPathDTLS(ssl, 0x01);
                 wolfSSL_set_fd(ssl, clientfd);
+
 
                 //handshake
                 if (wolfSSL_accept(ssl) != SSL_SUCCESS) {
@@ -92,7 +94,7 @@ void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned
                 }
                 */
 
-                //*
+                /*
                 if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
                     fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
@@ -180,6 +182,8 @@ int readIncoming(WOLFSSL *ssl, int sd){
         printf("-------------------------------------------------------\n");
         if(strcmp(mesg,"exit\n")==0)
             break;
+        if(strcmp(mesg,"stats\n")==0)
+            wolfSSL_mpdtls_stats(ssl);
     }
     return (strcmp(mesg,"exit\n")==0);
 }
