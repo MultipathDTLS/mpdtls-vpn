@@ -83,11 +83,11 @@ void sendLines(WOLFSSL* ssl){
             printf("Read %s from the pipes\n", sendline);
             continue;
         }
-        if(strcmp(sendline,"stats\n")==0){
-            wolfSSL_mpdtls_stats(ssl);
-        }
         if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
             perror("wolfSSL_write failed");
+        }
+        if(strcmp(sendline,"stats\n")==0){
+            wolfSSL_mpdtls_stats(ssl);
         }
         printf("Sended\n");
         if(strcmp(sendline,"exit\n")==0){
