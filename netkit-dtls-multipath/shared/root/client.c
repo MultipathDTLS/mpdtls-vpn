@@ -7,6 +7,8 @@ int main(int argc, char *argv[]){
     struct addrinfo hints;
     sockaddr *addr;
     char *ip_serv = "127.0.0.1"; //default server address
+
+    pthread_t reader, writer;
     
     if(argc > 1){
         ip_serv = argv[1];
@@ -39,8 +41,6 @@ int main(int argc, char *argv[]){
     int sockfd;
 
     ssl = InitiateDTLS(ctx,addr,&sockfd);
-    char mesg[1000];
-    wolfSSL_read(ssl, mesg, sizeof(mesg)-1);
 
     //Add new addresses if needed
     /*
@@ -50,8 +50,17 @@ int main(int argc, char *argv[]){
                 
     }
     //*/
-    
-    sendLines(ssl);
+    int ret;
+    if(ret = pthread_create(&reader, NULL, readIncoming, (void *) ssl)) {
+        fprintf (stderr, "%s", strerror (ret));
+    }
+
+    if(ret = pthread_create(&writer, NULL, sendLines, (void *) ssl)) {
+        fprintf (stderr, "%s", strerror (ret));
+    }
+
+    pthread_join(writer, NULL);
+    pthread_cancel(reader);
 
     close(sockfd);
     wolfSSL_free(ssl); 
@@ -63,7 +72,8 @@ int main(int argc, char *argv[]){
 /**
 * Send text input through the ssl object
 */
-void sendLines(WOLFSSL* ssl){
+void *sendLines(void* _ssl){
+    WOLFSSL *ssl = (WOLFSSL *)_ssl;
     char sendline[1000];
     while (fgets(sendline, 1000,stdin) != NULL)
     {
@@ -95,6 +105,8 @@ void sendLines(WOLFSSL* ssl){
             break;
         }
     }
+
+    return NULL;
 }
 
 /** INITIATE the connection and return the ssl object corresponding
@@ -173,4 +185,23 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
 
 
     return ssl;
+}
+
+void *readIncoming(void *_ssl){
+    WOLFSSL *ssl = (WOLFSSL *)_ssl;
+    char mesg[1000];
+    int n;
+    while((n = wolfSSL_read(ssl, mesg, sizeof(mesg)-1)) > 0){
+        printf("-------------------------------------------------------\n");
+        mesg[n] = 0;
+        printf("Received the following:\n");
+        printf("%s",mesg);
+        printf("-------------------------------------------------------\n");
+        if(strcmp(mesg,"exit\n")==0)
+            break;
+        if(strcmp(mesg,"stats\n")==0)
+            wolfSSL_mpdtls_stats(ssl);
+    }
+
+    return NULL;
 }

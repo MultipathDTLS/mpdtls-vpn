@@ -100,9 +100,6 @@ void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned
                     exit(EXIT_FAILURE);
                 }
                 //*/
-                
-                wolfSSL_write(ssl, "ok", strlen("ok"));
-
 
                 printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
                 printf("Server child waiting for incoming msg \n");

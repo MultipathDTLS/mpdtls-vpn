@@ -6,4 +6,5 @@
 **/
 WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd);
 
-void sendLines(WOLFSSL* ssl);
+void *sendLines(void* ssl);
+void *readIncoming(void *ssl);
