@@ -5,9 +5,11 @@
 * Date : 14/10/2014
 *
 */
-#define DEBUG
+//#define DEBUG
 
 #include "server.h"
+
+WOLFSSL_CTX *ctx; //general context
 
 int main(int argc, char *argv[]){
 
@@ -21,11 +23,11 @@ int main(int argc, char *argv[]){
     wolfSSL_Init();// Initialize wolfSSL
     wolfSSL_Debugging_ON(); //enable debug
     WOLFSSL* ssl = NULL;
-    WOLFSSL_CTX* ctx = NULL;
+
     sockaddr *serv_addr = NULL;
 
-    ctx = InitiateDTLS(ctx);
-    answerClients(ctx,ssl,serv_addr, family);
+    InitiateContext();
+    answerClients(ssl,serv_addr, family);
 
     printf("Shutdown server and clean...");
     free(serv_addr);
@@ -37,13 +39,15 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family){
-    int shutdown = 0;
+void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family){
+    int i;
     int clientfd;
-    int childpid;
     int sockfd;
+    pthread_t *server_thread[MAX_THREADS];
+    int n_thread = 0;
+    int ret;
 
-    while (!shutdown) {
+    while (1) {
         ssl = 0;
 
         sockfd = createSocket(serv_addr, family);
@@ -53,70 +57,74 @@ void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned
         if (clientfd == -1){
             perror("udp accept failed");
             break;
-        }else{
-#ifndef DEBUG
-            if((childpid = fork())<0){
-                perror("Error on fork");
-                exit(EXIT_FAILURE);
-            }else if(childpid == 0){
-#endif
-                //Dont know why but if you close the server socket, nothing works
-                //printf("Close socket %d (child) \n",sockfd);
-                //close(sockfd);
-                printf("Child created with socket %d \n",clientfd);               
-                if( (ssl = wolfSSL_new(ctx)) == NULL) {
-
-                   fprintf(stderr, "wolfSSL_new error SSL \n" );
-
-                   exit(EXIT_FAILURE);
-
-               }
-
-                wolfSSL_UseMultiPathDTLS(ssl, 0x01);
-                wolfSSL_set_fd(ssl, clientfd);
-
-
-                //handshake
-                if (wolfSSL_accept(ssl) != SSL_SUCCESS) {
-                    char errorString[80];
-                    int err = wolfSSL_get_error(ssl, 0);
-                    wolfSSL_ERR_error_string(err, errorString);
-                    printf("SSL_accept failed : %s \n",errorString);
-                    wolfSSL_free(ssl);
-                    close(clientfd);
-                    break;
-                }
-
-                /*
-                if (wolfSSL_mpdtls_new_addr(ssl, "::1") !=SSL_SUCCESS) {
-                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-                }
-                */
-
-                /*
-                if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
-                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-                }
-                //*/
-
-                printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
-                printf("Server child waiting for incoming msg \n");
-                readIncoming(ssl,clientfd);
-                printf("Server child exiting \n");
-                close(clientfd);
-                break;
-#ifndef DEBUG
-            } else {
-                close(clientfd);
+        }else if(n_thread < MAX_THREADS){
+            //we create a new thread to handle the communication
+            server_thread[n_thread] = (pthread_t *) malloc(sizeof(pthread_t));
+            if(ret = pthread_create(server_thread[n_thread], NULL, answerClient, (void *) &clientfd)) {
+                fprintf (stderr, "%s", strerror (ret));
             }
-#endif
+            n_thread++;
         }
+        /*
         printf("Close socket %d (parent) \n",sockfd);
         close(sockfd);
+        */
+    }
+    //clean all threads
+    printf("WAITING FOR THREADS TO JOIN\n");
+    for(i=0; i< n_thread; i++) {
+        pthread_join(*server_thread[i],NULL);
     }
 
+}
+
+void *answerClient(void* _fd) {
+    WOLFSSL *ssl;
+    int clientfd = *((int*) _fd);
+    printf("Child created with socket %d \n",clientfd);               
+    if( (ssl = wolfSSL_new(ctx)) == NULL) {
+
+       fprintf(stderr, "wolfSSL_new error SSL \n" );
+
+       exit(EXIT_FAILURE);
+
+    }
+
+    wolfSSL_UseMultiPathDTLS(ssl, 0x01);
+    wolfSSL_set_fd(ssl, clientfd);
+
+
+    //handshake
+    if (wolfSSL_accept(ssl) != SSL_SUCCESS) {
+        char errorString[80];
+        int err = wolfSSL_get_error(ssl, 0);
+        wolfSSL_ERR_error_string(err, errorString);
+        printf("SSL_accept failed : %s \n",errorString);
+        wolfSSL_free(ssl);
+        close(clientfd);
+        return NULL;
+    }
+
+    /*
+    if (wolfSSL_mpdtls_new_addr(ssl, "::1") !=SSL_SUCCESS) {
+        fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
+        exit(EXIT_FAILURE);
+    }
+    */
+
+    /*
+    if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
+        fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
+        exit(EXIT_FAILURE);
+    }
+    //*/
+
+    printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
+    printf("Server child waiting for incoming msg \n");
+    readIncoming(ssl,clientfd);
+    printf("Server thread exiting \n");
+    close(clientfd);
+    return NULL;
 }
 /**
 * Create the socket with adress serv_addr and family family (AF_INET or AF_INET6)
@@ -177,17 +185,18 @@ int readIncoming(WOLFSSL *ssl, int sd){
         printf("Received the following:\n");
         printf("%s",mesg);
         printf("-------------------------------------------------------\n");
-        if(strcmp(mesg,"exit\n")==0)
+        if(strcmp(mesg,"exit\n")==0) {
             break;
+        }
         if(strcmp(mesg,"stats\n")==0)
             wolfSSL_mpdtls_stats(ssl);
     }
     return (strcmp(mesg,"exit\n")==0);
 }
 
-/** INITIATE the connection and return the CTX object corresponding
+/** Initialise the ssl context that will be used for all incoming connections
 **/
-WOLFSSL_CTX* InitiateDTLS(WOLFSSL_CTX *ctx){
+void InitiateContext(){
 
    WOLFSSL_METHOD* method = wolfDTLSv1_2_server_method();
    if ( (ctx = wolfSSL_CTX_new(method)) == NULL){
@@ -211,8 +220,6 @@ WOLFSSL_CTX* InitiateDTLS(WOLFSSL_CTX *ctx){
         fprintf(stderr, "WOLFSSl Cipher List error \n");
         exit(EXIT_FAILURE);
     }
-
-   return ctx;
 }
 
 /**

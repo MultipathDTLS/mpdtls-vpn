@@ -38,10 +38,20 @@ int main(int argc, char *argv[]){
     wolfSSL_Debugging_ON(); //enable debug
     WOLFSSL* ssl;
     WOLFSSL_CTX* ctx = NULL;
+    WOLFSSL_SESSION *sess;
     int sockfd;
 
-    ssl = InitiateDTLS(ctx,addr,&sockfd);
+    ssl = InitiateDTLS(ctx,addr,&sockfd, NULL);
 
+    sess = wolfSSL_get_session(ssl);
+
+    /*//simulate deco/reco
+
+    printf("SIMULATE LOSS OF CONNECTION\n");
+    sleep(10);
+
+    ssl = InitiateDTLS(ctx,addr,&sockfd, sess); 
+    //*/
     //Add new addresses if needed
     /*
     if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.3") !=SSL_SUCCESS) {
@@ -111,7 +121,7 @@ void *sendLines(void* _ssl){
 
 /** INITIATE the connection and return the ssl object corresponding
 **/
-WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
+WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSSL_SESSION *sess){
 
     WOLFSSL* ssl;
 
@@ -173,6 +183,12 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd){
     if(wolfSSL_dtls_set_peer(ssl, serv_addr, sz)!=SSL_SUCCESS){
             perror("Error while trying to define the peer for the connection");
         }
+
+    if(sess != NULL) {
+        if(wolfSSL_set_session(ssl,sess)!=SSL_SUCCESS) {
+            perror("SSL_set_session failed");
+        }
+    }
 
     if (wolfSSL_connect(ssl) != SSL_SUCCESS) {
         int  err = wolfSSL_get_error(ssl, 0);

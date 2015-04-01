@@ -1,8 +1,9 @@
 #include "gen.h"
+#define MAX_THREADS 10
 
-/** Set up the server and return the ctx object corresponding
+/** Set up the server ctx
 **/
-WOLFSSL_CTX* InitiateDTLS(WOLFSSL_CTX *ctx);
+void InitiateContext();
 
 /*
 * Read all the data sent by a particular client on this ssl socket
@@ -13,7 +14,12 @@ int readIncoming(WOLFSSL *ssl, int);
 /**
 * Wait for clients to connect and initiate the connection
 */
-void answerClients(WOLFSSL_CTX *ctx, WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family);
+void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family);
+
+/**
+* Interact with one particular client
+*/
+void* answerClient(void*);
 
 /**
 * Method to initialize the DTLS handshake and keys exchange
