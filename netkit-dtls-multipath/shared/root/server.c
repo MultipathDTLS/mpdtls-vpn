@@ -112,7 +112,7 @@ void *answerClient(void* _fd) {
     }
     */
 
-    /*
+    //*
     if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
         fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
         exit(EXIT_FAILURE);
@@ -188,8 +188,11 @@ int readIncoming(WOLFSSL *ssl, int sd){
         if(strcmp(mesg,"exit\n")==0) {
             break;
         }
-        if(strcmp(mesg,"stats\n")==0)
+        if(strcmp(mesg,"stats\n")==0) {
+            wolfSSL_Debugging_ON();
             wolfSSL_mpdtls_stats(ssl);
+            //wolfSSL_Debugging_OFF();
+        }
     }
     return (strcmp(mesg,"exit\n")==0);
 }
@@ -199,10 +202,18 @@ int readIncoming(WOLFSSL *ssl, int sd){
 void InitiateContext(){
 
    WOLFSSL_METHOD* method = wolfDTLSv1_2_server_method();
-   if ( (ctx = wolfSSL_CTX_new(method)) == NULL){
+    if ( (ctx = wolfSSL_CTX_new(method)) == NULL){
         fprintf(stderr, "wolfSSL_CTX_new error \n");
         exit(EXIT_FAILURE);
-   }
+    }
+
+    //*
+    if (wolfSSL_mpdtls_new_addr_CTX(ctx, "127.0.0.3") !=SSL_SUCCESS) {
+                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
+                    exit(EXIT_FAILURE);
+                
+    }
+    //*/
 
     //Certs
 

@@ -35,7 +35,7 @@ int main(int argc, char *argv[]){
     /** Pointers to be freed later **/
 
     wolfSSL_Init();// Initialize wolfSSL
-    wolfSSL_Debugging_ON(); //enable debug
+    //wolfSSL_Debugging_ON(); //enable debug
     WOLFSSL* ssl;
     WOLFSSL_CTX* ctx = NULL;
     WOLFSSL_SESSION *sess;
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
 
     sess = wolfSSL_get_session(ssl);
 
-    /*//simulate deco/reco
+    //*//simulate deco/reco
 
     printf("SIMULATE LOSS OF CONNECTION\n");
     sleep(10);
@@ -91,9 +91,29 @@ void *sendLines(void* _ssl){
             printf("Adding new interface, please enter the new address: \n");
             if (fgets(sendline, 1000,stdin) != NULL) {
                 if (wolfSSL_mpdtls_new_addr(ssl, sendline) !=SSL_SUCCESS) {
-                                fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-                                exit(EXIT_FAILURE);
+                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
                 }
+            }
+            continue;
+        }
+        if(strcmp(sendline,"connect\n")==0){
+            char *buf = NULL;
+            wolfSSL_mpdtls_ask_connect(ssl, &buf, NULL);
+
+            printf("%s\n", buf);
+            free(buf);
+
+            int remote, host, res = 0; 
+            
+            do {
+                printf("Choose 1 address in each list and give the 2 indices as \"host -> remote\"\n");
+                if (fgets(sendline, 1000,stdin) != NULL){
+                    res = sscanf(sendline, "%d %d", &host, &remote);
+                }
+            } while (res != 2);
+
+            if (wolfSSL_mpdtls_connect_addr(ssl, host, remote) != SSL_SUCCESS) {
+                fprintf(stderr, "wolfSSL_mpdtls_connect_addr error\n" );
             }
             continue;
         }
@@ -107,7 +127,9 @@ void *sendLines(void* _ssl){
             perror("wolfSSL_write failed");
         }
         if(strcmp(sendline,"stats\n")==0){
+            wolfSSL_Debugging_ON();
             wolfSSL_mpdtls_stats(ssl);
+            wolfSSL_Debugging_OFF();
         }
         printf("Sended\n");
         if(strcmp(sendline,"exit\n")==0){
@@ -125,20 +147,28 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSS
 
     WOLFSSL* ssl;
 
-   WOLFSSL_METHOD* method = wolfDTLSv1_2_client_method();
-   if ( (ctx = wolfSSL_CTX_new(method)) == NULL){
+    WOLFSSL_METHOD* method = wolfDTLSv1_2_client_method();
+    if ( (ctx = wolfSSL_CTX_new(method)) == NULL){
         fprintf(stderr, "wolfSSL_CTX_new error.\n");
 
         exit(EXIT_FAILURE);
-   }
+    }
 
-   if (wolfSSL_CTX_set_cipher_list(ctx, "AES256-SHA") != SSL_SUCCESS)
+    /*
+    if (wolfSSL_mpdtls_new_addr_CTX(ctx, "127.0.0.3") !=SSL_SUCCESS) {
+                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
+                    exit(EXIT_FAILURE);
+                
+    }
+    //*/
+
+    if (wolfSSL_CTX_set_cipher_list(ctx, "AES256-SHA") != SSL_SUCCESS)
         perror("client can't set cipher list 1");
 
-    if (wolfSSL_CTX_use_certificate_file(ctx, "certs/client-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_certificate_file(ctx, "certs/server-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
         perror("can't load client cert file");
 
-    if (wolfSSL_CTX_use_PrivateKey_file(ctx, "certs/client-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_PrivateKey_file(ctx, "certs/server-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
         perror("can't load client key file, ");
 
     if (wolfSSL_CTX_load_verify_locations(ctx,"certs/ca-cert.pem",NULL) != SSL_SUCCESS) {
@@ -147,7 +177,7 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSS
        printf("%d", wolfSSL_CTX_load_verify_locations(ctx,"./certs/ca.crt",0));
        exit(EXIT_FAILURE);
 
-   }
+    }
       
        // create the socket
     if((*sockfd=socket(serv_addr->sa_family,SOCK_DGRAM,0))<0) {
@@ -156,24 +186,24 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSS
     }
 
 
-   if( (ssl = wolfSSL_new(ctx)) == NULL) {
+    if( (ssl = wolfSSL_new(ctx)) == NULL) {
 
        fprintf(stderr, "wolfSSL_new error.\n");
 
        exit(EXIT_FAILURE);
 
-   }
+    }
 
-   //we put the right port
+    //we put the right port
 
-   unsigned int sz = 0;
-   if(serv_addr->sa_family == AF_INET){
+    unsigned int sz = 0;
+    if(serv_addr->sa_family == AF_INET){
         sz = sizeof(struct sockaddr_in);
         ((sockaddr_in*) serv_addr)->sin_port = htons(PORT_NUMBER);
-   }else if(serv_addr->sa_family == AF_INET6){
+    }else if(serv_addr->sa_family == AF_INET6){
         sz = sizeof(struct sockaddr_in6);
         ((sockaddr_in6*) serv_addr)->sin6_port = htons(PORT_NUMBER);
-   }
+    }
     
     wolfSSL_UseMultiPathDTLS(ssl, 1);
     wolfSSL_set_fd(ssl, *sockfd);
