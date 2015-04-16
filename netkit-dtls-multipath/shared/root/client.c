@@ -1,6 +1,5 @@
 #include "client.h"
 
-
 int main(int argc, char *argv[]){
     int error;
     struct addrinfo *res;
@@ -8,7 +7,7 @@ int main(int argc, char *argv[]){
     sockaddr *addr;
     char *ip_serv = "127.0.0.1"; //default server address
 
-    pthread_t reader, writer;
+    pthread_t reader, writer, tun;
     
     if(argc > 1){
         ip_serv = argv[1];
@@ -39,6 +38,8 @@ int main(int argc, char *argv[]){
     inet_aton("10.0.0.1",&config.vpnIP);
     inet_aton("255.255.255.0",&config.vpnNetmask);
 
+    /*for debug purposes */
+    int tunfd = init_tun();
 
     wolfSSL_Init();// Initialize wolfSSL
     //wolfSSL_Debugging_ON(); //enable debug
@@ -66,6 +67,11 @@ int main(int argc, char *argv[]){
                 
     }
     //*/
+
+    ReaderTunArgs args;
+    args.tunfd = tunfd;
+    args.ssl = ssl;
+
     int ret;
     if((ret = pthread_create(&reader, NULL, readIncoming, (void *) ssl))!=0) {
         fprintf (stderr, "%s", strerror (ret));
@@ -74,6 +80,12 @@ int main(int argc, char *argv[]){
     if((ret = pthread_create(&writer, NULL, sendLines, (void *) ssl))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
+
+
+    if((ret = pthread_create(&tun, NULL, readFromTun, (void *) &args))!=0) {
+        fprintf (stderr, "%s", strerror (ret));
+    }
+    
 
     pthread_join(writer, NULL);
     pthread_cancel(reader);
@@ -84,6 +96,22 @@ int main(int argc, char *argv[]){
     wolfSSL_Cleanup();
     freeConfig();
     return 0;
+}
+
+void *readFromTun(void* _args) {
+    ReaderTunArgs *args = (ReaderTunArgs *)_args;
+    WOLFSSL *ssl = args->ssl;
+    int tunfd = args->tunfd;
+    unsigned char u[MESSAGE_MAX_LENGTH];
+    int n;
+    while((n = read(tunfd, u, MESSAGE_MAX_LENGTH)) > 0){
+        printf("Packet received from tun (%d), transmitting it through DTLS ...\n",n);
+        if(wolfSSL_write(ssl, u, n) != n){
+            perror("wolfSSL_write failed");
+        }
+    }
+
+    return NULL;
 }
 
 /**

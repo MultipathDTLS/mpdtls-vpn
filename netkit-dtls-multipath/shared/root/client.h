@@ -8,3 +8,9 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSS
 
 void *sendLines(void* ssl);
 void *readIncoming(void *ssl);
+void *readFromTun(void* _args);
+
+typedef struct ReaderTunArgs{
+    WOLFSSL *ssl;
+    int tunfd;
+} ReaderTunArgs;
