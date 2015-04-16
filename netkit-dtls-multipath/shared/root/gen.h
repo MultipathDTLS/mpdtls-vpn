@@ -27,7 +27,6 @@
 #include "configuration.h"
 #include "tun_device.h"
 
-
 #define PORT_NUMBER 6586
 #define SOCKET_T int
 #define MESSAGE_MAX_LENGTH 1400

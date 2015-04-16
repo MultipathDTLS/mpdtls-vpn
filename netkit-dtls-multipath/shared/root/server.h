@@ -9,7 +9,7 @@ void InitiateContext();
 * Read all the data sent by a particular client on this ssl socket
 * return if 'exit' is sended
 */
-int readIncoming(WOLFSSL *ssl, int);
+int readIncoming(WOLFSSL *ssl, int, int);
 
 /**
 * Wait for clients to connect and initiate the connection

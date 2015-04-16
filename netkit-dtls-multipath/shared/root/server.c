@@ -19,6 +19,10 @@ int main(int argc, char *argv[]){
     }
 
     /** Pointers to be freed later **/
+    /* initialiaze config */
+    initConfig();
+    inet_aton("10.0.0.2",&config.vpnIP);
+    inet_aton("10.0.0.0/24",&config.vpnNetmask);
 
     wolfSSL_Init();// Initialize wolfSSL
     wolfSSL_Debugging_ON(); //enable debug
@@ -35,6 +39,7 @@ int main(int argc, char *argv[]){
     wolfSSL_free(ssl); 
     wolfSSL_CTX_free(ctx);
     wolfSSL_Cleanup();
+    freeConfig();
     printf(" DONE\n");
     return 0;
 }
@@ -81,6 +86,7 @@ void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family){
 void *answerClient(void* _fd) {
     WOLFSSL *ssl;
     int clientfd = *((int*) _fd);
+    int tunfd = init_tun();
     printf("Child created with socket %d \n",clientfd);               
     if( (ssl = wolfSSL_new(ctx)) == NULL) {
 
@@ -112,7 +118,7 @@ void *answerClient(void* _fd) {
     }
     */
 
-    //*
+    /*
     if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
         fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
         exit(EXIT_FAILURE);
@@ -121,8 +127,11 @@ void *answerClient(void* _fd) {
 
     printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
     printf("Server child waiting for incoming msg \n");
-    readIncoming(ssl,clientfd);
+
+    readIncoming(ssl,clientfd, tunfd);
+    
     printf("Server thread exiting \n");
+    close_tun(tunfd);
     close(clientfd);
     return NULL;
 }
@@ -178,25 +187,19 @@ int createSocket(sockaddr *serv_addr, unsigned short family){
     return sockfd;
 }
 
-int readIncoming(WOLFSSL *ssl, int sd){
+int readIncoming(WOLFSSL *ssl, int sd, int tunfd){
     char mesg[1000];
-    int n;
+    int n, i;
     while((n = wolfSSL_read(ssl, mesg, sizeof(mesg)-1)) > 0){
         printf("-------------------------------------------------------\n");
         mesg[n] = 0;
         printf("Received the following:\n");
-        printf("%s",mesg);
-        printf("-------------------------------------------------------\n");
-        if(strcmp(mesg,"exit\n")==0) {
-            break;
-        }
-        if(strcmp(mesg,"stats\n")==0) {
-            wolfSSL_Debugging_ON();
-            wolfSSL_mpdtls_stats(ssl);
-            //wolfSSL_Debugging_OFF();
-        }
+        for(i=0;i<n;i++)
+            printf("%02x ", mesg[i]);
+        printf("\n-------------------------------------------------------\n");
+        write_tun(tunfd, mesg, n);
     }
-    return (strcmp(mesg,"exit\n")==0);
+    return 0;
 }
 
 /** Initialise the ssl context that will be used for all incoming connections
