@@ -137,15 +137,19 @@ void *sendLines(void* _ssl){
             }
             continue;
         }
+        /*
         if(strcmp(sendline, "read pipe\n") == 0) {
             printf("Reading from the pipes...\n");
             wolfSSL_read(ssl, sendline, sizeof(sendline)-1);
             printf("Read %s from the pipes\n", sendline);
             continue;
         }
-        // if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
-        //     perror("wolfSSL_write failed");
-        // }
+        /*
+        if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
+            perror("wolfSSL_write failed");
+        }
+        */
+
         if(strcmp(sendline,"stats\n")==0){
             wolfSSL_Debugging_ON();
             wolfSSL_mpdtls_stats(ssl);
