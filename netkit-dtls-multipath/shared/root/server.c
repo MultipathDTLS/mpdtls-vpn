@@ -128,7 +128,17 @@ void *answerClient(void* _fd) {
     printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
     printf("Server child waiting for incoming msg \n");
 
-    readIncoming(ssl,clientfd, tunfd);
+    ReaderTunArgs args;
+    args.tunfd = tunfd;
+    args.ssl = ssl;
+    pthread_t reader;
+
+    int ret;
+    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) &args))!=0) {
+        fprintf (stderr, "%s", strerror (ret));
+    }
+
+    readFromTun(&args);
     
     printf("Server thread exiting \n");
     close_tun(tunfd);
@@ -185,21 +195,6 @@ int createSocket(sockaddr *serv_addr, unsigned short family){
             perror("ERROR on binding");
 
     return sockfd;
-}
-
-int readIncoming(WOLFSSL *ssl, int sd, int tunfd){
-    char mesg[1000];
-    int n, i;
-    while((n = wolfSSL_read(ssl, mesg, sizeof(mesg)-1)) > 0){
-        printf("-------------------------------------------------------\n");
-        mesg[n] = 0;
-        printf("Received the following:\n");
-        for(i=0;i<n;i++)
-            printf("%02x ", mesg[i]);
-        printf("\n-------------------------------------------------------\n");
-        write_tun(tunfd, mesg, n);
-    }
-    return 0;
 }
 
 /** Initialise the ssl context that will be used for all incoming connections

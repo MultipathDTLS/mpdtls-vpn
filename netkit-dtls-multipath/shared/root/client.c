@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
     int tunfd = init_tun();
 
     wolfSSL_Init();// Initialize wolfSSL
-    //wolfSSL_Debugging_ON(); //enable debug
+    wolfSSL_Debugging_ON(); //enable debug
     WOLFSSL* ssl;
     WOLFSSL_CTX* ctx = NULL;
     //WOLFSSL_SESSION *sess;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
     args.ssl = ssl;
 
     int ret;
-    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) ssl))!=0) {
+    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) &args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
@@ -89,6 +89,7 @@ int main(int argc, char *argv[]){
 
     pthread_join(writer, NULL);
     pthread_cancel(reader);
+    pthread_cancel(tun);
 
     close(sockfd);
     wolfSSL_free(ssl); 
@@ -96,22 +97,6 @@ int main(int argc, char *argv[]){
     wolfSSL_Cleanup();
     freeConfig();
     return 0;
-}
-
-void *readFromTun(void* _args) {
-    ReaderTunArgs *args = (ReaderTunArgs *)_args;
-    WOLFSSL *ssl = args->ssl;
-    int tunfd = args->tunfd;
-    unsigned char u[MESSAGE_MAX_LENGTH];
-    int n;
-    while((n = read(tunfd, u, MESSAGE_MAX_LENGTH)) > 0){
-        printf("Packet received from tun (%d), transmitting it through DTLS ...\n",n);
-        if(wolfSSL_write(ssl, u, n) != n){
-            perror("wolfSSL_write failed");
-        }
-    }
-
-    return NULL;
 }
 
 /**
@@ -158,13 +143,13 @@ void *sendLines(void* _ssl){
             printf("Read %s from the pipes\n", sendline);
             continue;
         }
-        if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
-            perror("wolfSSL_write failed");
-        }
+        // if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
+        //     perror("wolfSSL_write failed");
+        // }
         if(strcmp(sendline,"stats\n")==0){
             wolfSSL_Debugging_ON();
             wolfSSL_mpdtls_stats(ssl);
-            //wolfSSL_Debugging_OFF();
+            wolfSSL_Debugging_OFF();
         }
         printf("Sended\n");
         if(strcmp(sendline,"exit\n")==0){
@@ -200,10 +185,10 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSS
     if (wolfSSL_CTX_set_cipher_list(ctx, "AES256-SHA") != SSL_SUCCESS)
         perror("client can't set cipher list 1");
 
-    if (wolfSSL_CTX_use_certificate_file(ctx, "certs/server-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_certificate_file(ctx, "certs/client-cert.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
         perror("can't load client cert file");
 
-    if (wolfSSL_CTX_use_PrivateKey_file(ctx, "certs/server-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
+    if (wolfSSL_CTX_use_PrivateKey_file(ctx, "certs/client-key.pem", SSL_FILETYPE_PEM) != SSL_SUCCESS)
         perror("can't load client key file, ");
 
     if (wolfSSL_CTX_load_verify_locations(ctx,"certs/ca-cert.pem",NULL) != SSL_SUCCESS) {
@@ -266,23 +251,4 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSS
 
 
     return ssl;
-}
-
-void *readIncoming(void *_ssl){
-    WOLFSSL *ssl = (WOLFSSL *)_ssl;
-    char mesg[1000];
-    int n;
-    while((n = wolfSSL_read(ssl, mesg, sizeof(mesg)-1)) > 0){
-        printf("-------------------------------------------------------\n");
-        mesg[n] = 0;
-        printf("Received the following:\n");
-        printf("%s",mesg);
-        printf("-------------------------------------------------------\n");
-        if(strcmp(mesg,"exit\n")==0)
-            break;
-        if(strcmp(mesg,"stats\n")==0)
-            wolfSSL_mpdtls_stats(ssl);
-    }
-
-    return NULL;
 }

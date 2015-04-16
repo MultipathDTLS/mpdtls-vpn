@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS=-Wall -std=gnu99 -DWOLFSSL_DTLS -DWOLFSSL_MPDTLS -g
 LIBS=-lwolfssl -lpthread
-SOURCES_D = strlib.c tun_device_common.c tun_device_linux.c configuration.c
+SOURCES_D = strlib.c tun_device_common.c tun_device_linux.c configuration.c gen.c
 SOURCES_C = client.c
 SOURCES_S = server.c
 OBJECTS_C = $(SOURCES_C:.c=.o)

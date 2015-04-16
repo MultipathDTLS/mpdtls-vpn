@@ -37,4 +37,12 @@ typedef struct sockaddr_in6 sockaddr_in6;
 
 struct configuration config;
 
+void *readIncoming(void *);
+void *readFromTun(void*);
+
+typedef struct ReaderTunArgs{
+    WOLFSSL *ssl;
+    int tunfd;
+} ReaderTunArgs;
+
 #endif /*GEN_H_*/
