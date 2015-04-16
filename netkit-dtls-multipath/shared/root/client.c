@@ -20,7 +20,7 @@ int main(int argc, char *argv[]){
     hints.ai_socktype = SOCK_DGRAM;
     error = getaddrinfo(ip_serv, NULL, &hints, &res);
     if (error) {
-        printf(gai_strerror(error));
+        printf("%s\n", gai_strerror(error));
         return EXIT_FAILURE;
     } else {
         if(res) { //we take only the first one
@@ -34,18 +34,24 @@ int main(int argc, char *argv[]){
 
     /** Pointers to be freed later **/
 
+    /* initialiaze config */
+    initConfig();
+    inet_aton("10.0.0.1",&config.vpnIP);
+    inet_aton("255.255.255.0",&config.vpnNetmask);
+
+
     wolfSSL_Init();// Initialize wolfSSL
     //wolfSSL_Debugging_ON(); //enable debug
     WOLFSSL* ssl;
     WOLFSSL_CTX* ctx = NULL;
-    WOLFSSL_SESSION *sess;
+    //WOLFSSL_SESSION *sess;
     int sockfd;
 
     ssl = InitiateDTLS(ctx,addr,&sockfd, NULL);
 
-    sess = wolfSSL_get_session(ssl);
+    //sess = wolfSSL_get_session(ssl);
 
-    //*//simulate deco/reco
+    /*//simulate deco/reco
 
     printf("SIMULATE LOSS OF CONNECTION\n");
     sleep(10);
@@ -61,11 +67,11 @@ int main(int argc, char *argv[]){
     }
     //*/
     int ret;
-    if(ret = pthread_create(&reader, NULL, readIncoming, (void *) ssl)) {
+    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) ssl))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
-    if(ret = pthread_create(&writer, NULL, sendLines, (void *) ssl)) {
+    if((ret = pthread_create(&writer, NULL, sendLines, (void *) ssl))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
@@ -76,6 +82,7 @@ int main(int argc, char *argv[]){
     wolfSSL_free(ssl); 
     wolfSSL_CTX_free(ctx);
     wolfSSL_Cleanup();
+    freeConfig();
     return 0;
 }
 
@@ -129,7 +136,7 @@ void *sendLines(void* _ssl){
         if(strcmp(sendline,"stats\n")==0){
             wolfSSL_Debugging_ON();
             wolfSSL_mpdtls_stats(ssl);
-            wolfSSL_Debugging_OFF();
+            //wolfSSL_Debugging_OFF();
         }
         printf("Sended\n");
         if(strcmp(sendline,"exit\n")==0){

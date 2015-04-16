@@ -60,7 +60,7 @@ void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family){
         }else if(n_thread < MAX_THREADS){
             //we create a new thread to handle the communication
             server_thread[n_thread] = (pthread_t *) malloc(sizeof(pthread_t));
-            if(ret = pthread_create(server_thread[n_thread], NULL, answerClient, (void *) &clientfd)) {
+            if((ret = pthread_create(server_thread[n_thread], NULL, answerClient, (void *) &clientfd))!=0) {
                 fprintf (stderr, "%s", strerror (ret));
             }
             n_thread++;
@@ -133,29 +133,31 @@ void *answerClient(void* _fd) {
 int createSocket(sockaddr *serv_addr, unsigned short family){
 
     int sockfd;
+
     socklen_t sz = (family==AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
+    if(serv_addr == NULL) {
+        if (family == AF_INET) {
+            sockaddr_in *addr = malloc(sizeof(sockaddr_in));
+            bzero(addr, sizeof(sockaddr_in));
 
-    if (family == AF_INET) {
-        sockaddr_in *addr = malloc(sizeof(sockaddr_in));
-        bzero(addr, sizeof(sockaddr_in));
+            addr->sin_family = AF_INET;
+            addr->sin_port = htons(PORT_NUMBER);
+            addr->sin_addr.s_addr = INADDR_ANY;
 
-        addr->sin_family = AF_INET;
-        addr->sin_port = htons(PORT_NUMBER);
-        addr->sin_addr.s_addr = INADDR_ANY;
+            serv_addr = (sockaddr*) addr;
 
-        serv_addr = (sockaddr*) addr;
+        }else if(family == AF_INET6) {
 
-    }else if(family == AF_INET6) {
+            sockaddr_in6 *addr = malloc(sizeof(sockaddr_in6));
+            bzero(addr, sizeof(sockaddr_in6));
 
-        sockaddr_in6 *addr = malloc(sizeof(sockaddr_in6));
-        bzero(addr, sizeof(sockaddr_in6));
+            addr->sin6_family = AF_INET6;
+            addr->sin6_port = htons(PORT_NUMBER);
+            addr->sin6_addr = in6addr_any;
 
-        addr->sin6_family = AF_INET6;
-        addr->sin6_port = htons(PORT_NUMBER);
-        addr->sin6_addr = in6addr_any;
+            serv_addr = (sockaddr*) addr;
 
-        serv_addr = (sockaddr*) addr;
-
+        }
     }
 
             // create the socket
