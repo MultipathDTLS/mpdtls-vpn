@@ -144,7 +144,6 @@ void *sendLines(void* _ssl){
             printf("Read %s from the pipes\n", sendline);
             continue;
         }
-        /*
         if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
             perror("wolfSSL_write failed");
         }
