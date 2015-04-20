@@ -30,7 +30,7 @@
 
 #define PORT_NUMBER 6586
 #define SOCKET_T int
-#define MESSAGE_MAX_LENGTH 1400
+#define MESSAGE_MAX_LENGTH 1500
 
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr sockaddr;
