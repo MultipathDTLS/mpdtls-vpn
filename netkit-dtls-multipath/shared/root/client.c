@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
     
 
     pthread_join(writer, NULL);
-    pthread_cancel(reader);
+    pthread_join(reader, NULL);
     pthread_cancel(tun);
 
     close(sockfd);
