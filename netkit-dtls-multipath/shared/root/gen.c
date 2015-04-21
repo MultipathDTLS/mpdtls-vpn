@@ -34,16 +34,7 @@ void *readIncoming(void* _args){
     packet_t u;
     u.raw = malloc(MESSAGE_MAX_LENGTH);
     int n, i;
-    while(1){
-        n = wolfSSL_read(ssl, u.raw, MESSAGE_MAX_LENGTH);
-        if(n <= 0){
-            if(n < 0) {
-                printf("ERROR RECEIVED : keep going");
-                continue;
-            }else{
-                break;
-            }
-        }
+    while((n = wolfSSL_read(ssl, u.raw, MESSAGE_MAX_LENGTH)) > 0){
         printf("-------------------------------------------------------\n");
         printf(
         ">> Receiving a VPN message: size %d from SRC = %02x.%02x.%02x.%02x to DST = %02x.%02x.%02x.%02x\n",
