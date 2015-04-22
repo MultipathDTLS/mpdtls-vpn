@@ -154,6 +154,12 @@ void *sendLines(void* _ssl){
             wolfSSL_mpdtls_stats(ssl);
             wolfSSL_Debugging_OFF();
         }
+	if(strcmp(sendline,"debug on\n")==0){
+	    wolfSSL_Debugging_ON();
+	}
+	if(strcmp(sendline,"debug off\n")==0){
+	    wolfSSL_Debugging_OFF();
+	}
         printf("Sended\n");
         if(strcmp(sendline,"exit\n")==0){
             printf("Shutting down client \n");
