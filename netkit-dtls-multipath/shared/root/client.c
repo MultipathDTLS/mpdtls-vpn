@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
     int tunfd = init_tun();
 
     wolfSSL_Init();// Initialize wolfSSL
-    wolfSSL_Debugging_ON(); //enable debug
+    //wolfSSL_Debugging_ON(); //enable debug
     WOLFSSL* ssl;
     WOLFSSL_CTX* ctx = NULL;
     //WOLFSSL_SESSION *sess;
@@ -126,7 +126,7 @@ void *sendLines(void* _ssl){
             int remote, host, res = 0; 
             
             do {
-                printf("Choose 1 address in each list and give the 2 indices as \"host -> remote\"\n");
+                printf("Choose 1 address in each list and give the 2 indices as \"host[space]remote\"\n");
                 if (fgets(sendline, 1000,stdin) != NULL){
                     res = sscanf(sendline, "%d %d", &host, &remote);
                 }
@@ -136,6 +136,27 @@ void *sendLines(void* _ssl){
                 fprintf(stderr, "wolfSSL_mpdtls_connect_addr error\n" );
             }
             continue;
+        }
+        if(strcmp(sendline,"change scheduling\n")==0) {
+
+            printf("1) Round Robin : every flow has the same importance\n");
+            printf("2) Optimize Latency : give more priority to flows with lower delays\n");
+            int res=0,r;
+            do {
+                printf("Choose one option among the one proposed \n");
+                if (fgets(sendline, 1000,stdin) != NULL){
+                    r = sscanf(sendline, "%d", &res);
+                }
+            } while (r!=1 || res < 1 || res > 2);
+            switch(res) {
+                case 1:
+                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, ROUND_ROBIN);
+                break;
+                case 2:
+                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, OPTIMIZE_LATENCY);
+                break;
+            }
+
         }
         /*
         if(strcmp(sendline, "read pipe\n") == 0) {
@@ -160,7 +181,6 @@ void *sendLines(void* _ssl){
 	if(strcmp(sendline,"debug off\n")==0){
 	    wolfSSL_Debugging_OFF();
 	}
-        printf("Sended\n");
         if(strcmp(sendline,"exit\n")==0){
             printf("Shutting down client \n");
             break;

@@ -9,7 +9,7 @@ void *readFromTun(void* _args) {
     u.raw = malloc(MESSAGE_MAX_LENGTH);
     int n;
     while((n = read(tunfd, u.raw, MESSAGE_MAX_LENGTH)) > 0){
-        printf(
+        /*printf(
         ">> Sending a VPN message: size %d from SRC = %02x.%02x.%02x.%02x to DST = %02x.%02x.%02x.%02x\n",
         n, (ntohl(u.ip->ip_src.s_addr) >> 24) & 0xFF,
         (ntohl(u.ip->ip_src.s_addr) >> 16) & 0xFF,
@@ -18,7 +18,7 @@ void *readFromTun(void* _args) {
         (ntohl(u.ip->ip_dst.s_addr) >> 24) & 0xFF,
         (ntohl(u.ip->ip_dst.s_addr) >> 16) & 0xFF,
         (ntohl(u.ip->ip_dst.s_addr) >> 8) & 0xFF,
-        (ntohl(u.ip->ip_dst.s_addr) >> 0) & 0xFF);
+        (ntohl(u.ip->ip_dst.s_addr) >> 0) & 0xFF);*/
         if(wolfSSL_write(ssl, u.raw, n) != n){
             perror("wolfSSL_write failed");
         }
@@ -33,9 +33,9 @@ void *readIncoming(void* _args){
     int tunfd = args->tunfd;
     packet_t u;
     u.raw = malloc(MESSAGE_MAX_LENGTH);
-    int n, i;
+    int n;
     while((n = wolfSSL_read(ssl, u.raw, MESSAGE_MAX_LENGTH)) > 0){
-        printf("-------------------------------------------------------\n");
+        /*printf("-------------------------------------------------------\n");
         printf(
         ">> Receiving a VPN message: size %d from SRC = %02x.%02x.%02x.%02x to DST = %02x.%02x.%02x.%02x\n",
         n, (ntohl(u.ip->ip_src.s_addr) >> 24) & 0xFF,
@@ -48,7 +48,7 @@ void *readIncoming(void* _args){
         (ntohl(u.ip->ip_dst.s_addr) >> 0) & 0xFF);
         for(i=0;i<n;i++)
             printf("%02x ", u.raw[i]);
-        printf("\n-------------------------------------------------------\n");
+        printf("\n-------------------------------------------------------\n");*/
         write_tun(tunfd, u.raw, n);
     }
     printf("STOP readIncoming\n");
