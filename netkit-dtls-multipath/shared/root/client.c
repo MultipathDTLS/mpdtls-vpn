@@ -142,18 +142,19 @@ void *sendLines(void* _ssl){
             printf("1) Round Robin : every flow has the same importance\n");
             printf("2) Optimize Latency : give more priority to flows with lower delays\n");
             int res=0,r;
+            uint res2;
             do {
-                printf("Choose one option among the one proposed \n");
+                printf("Choose one option among the one proposed and include the number of tokens (i[space]n) \n");
                 if (fgets(sendline, 1000,stdin) != NULL){
-                    r = sscanf(sendline, "%d", &res);
+                    r = sscanf(sendline, "%d %d", &res, &res2);
                 }
-            } while (r!=1 || res < 1 || res > 2);
+            } while (r!=2 || res < 1 || res > 2);
             switch(res) {
                 case 1:
-                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, ROUND_ROBIN);
+                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, ROUND_ROBIN, res2);
                 break;
                 case 2:
-                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, OPTIMIZE_LATENCY);
+                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, OPTIMIZE_LATENCY, res2);
                 break;
             }
 
