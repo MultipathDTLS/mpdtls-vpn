@@ -46,7 +46,7 @@ void initConfig() {
     memset(&config.vpnIP, 0, sizeof(config.vpnIP));
     memset(&config.vpnNetmask, 0, sizeof(config.vpnNetmask));
     config.network = "10.0.0.0/24";
-    config.tun_mtu = 1419;
+    config.tun_mtu = MESSAGE_MAX_LENGTH;
     config.tun_device = NULL;
     config.tap_id = NULL;
 
