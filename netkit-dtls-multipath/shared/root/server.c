@@ -14,15 +14,22 @@ WOLFSSL_CTX *ctx; //general context
 int main(int argc, char *argv[]){
 
     unsigned short family = AF_INET;
-    if(argc > 1){
+    char *vpn_ip = "10.0.0.2";
+    char *vpn_sub = "10.0.0.0/24";
+
+    if(argc > 3){
         family = AF_INET6;
+    } 
+    if (argc > 2) {
+        vpn_ip = argv[1];
+        vpn_sub = argv[2];
     }
 
     /** Pointers to be freed later **/
     /* initialiaze config */
     initConfig();
-    inet_aton("10.0.0.2",&config.vpnIP);
-    inet_aton("10.0.0.0/24",&config.vpnNetmask);
+    inet_aton(vpn_ip, &config.vpnIP);
+    inet_aton(vpn_sub, &config.vpnNetmask);
 
     wolfSSL_Init();// Initialize wolfSSL
     wolfSSL_Debugging_ON(); //enable debug
@@ -119,7 +126,7 @@ void *answerClient(void* _fd) {
     */
 
     /*
-    if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.2") !=SSL_SUCCESS) {
+    if (wolfSSL_mpdtls_new_addr(ssl, "192.168.3.101") !=SSL_SUCCESS) {
         fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
         exit(EXIT_FAILURE);
     }

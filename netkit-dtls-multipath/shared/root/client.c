@@ -6,11 +6,17 @@ int main(int argc, char *argv[]){
     struct addrinfo hints;
     sockaddr *addr;
     char *ip_serv = "127.0.0.1"; //default server address
+    char *vpn_ip = "10.0.0.2";
+    char *vpn_sub = "10.0.0.0/24";
 
     pthread_t reader, writer, tun;
     
-    if(argc > 1){
-        ip_serv = argv[1];
+    if(argc > 3){
+        ip_serv = argv[3];
+    }
+    if (argc > 2) {
+        vpn_ip = argv[1];
+        vpn_sub = argv[2];
     }
 
     /* getaddrinfo() case.  It can handle multiple addresses. */
@@ -35,8 +41,8 @@ int main(int argc, char *argv[]){
 
     /* initialiaze config */
     initConfig();
-    inet_aton("10.0.0.1",&config.vpnIP);
-    inet_aton("255.255.255.0",&config.vpnNetmask);
+    inet_aton(vpn_ip, &config.vpnIP);
+    inet_aton(vpn_sub, &config.vpnNetmask);
 
     /*for debug purposes */
     int tunfd = init_tun();
