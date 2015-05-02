@@ -42,7 +42,6 @@
 struct configuration {
 
     struct in_addr vpnIP;                       // VPN IP address
-    struct in_addr vpnNetmask;                  // VPN Netmask
     char *network;                              // VPN subnetwork as a string
 
     int tun_mtu;                                // MTU of the tun device

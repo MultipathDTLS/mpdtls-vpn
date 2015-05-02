@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
     /* initialiaze config */
     initConfig();
     inet_aton(vpn_ip, &config.vpnIP);
-    inet_aton(vpn_sub, &config.vpnNetmask);
+    config.network = vpn_sub;
 
     wolfSSL_Init();// Initialize wolfSSL
     wolfSSL_Debugging_ON(); //enable debug

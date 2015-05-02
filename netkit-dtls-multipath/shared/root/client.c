@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
     /* initialiaze config */
     initConfig();
     inet_aton(vpn_ip, &config.vpnIP);
-    inet_aton(vpn_sub, &config.vpnNetmask);
+    config.network = vpn_sub;
 
     /*for debug purposes */
     int tunfd = init_tun();
