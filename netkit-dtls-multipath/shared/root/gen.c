@@ -1,6 +1,7 @@
 #include "gen.h"
 
 
+
 void *readFromTun(void* _args) {
     ReaderTunArgs *args = (ReaderTunArgs *)_args;
     WOLFSSL *ssl = args->ssl;
@@ -52,5 +53,97 @@ void *readIncoming(void* _args){
         write_tun(tunfd, u.raw, n);
     }
     printf("STOP readIncoming\n");
+    return NULL;
+}
+
+/**
+* Send text input through the ssl object
+*/
+void *sendLines(void* _ssl){
+    WOLFSSL *ssl = (WOLFSSL *)_ssl;
+    char sendline[1000];
+    while (fgets(sendline, 1000,stdin) != NULL)
+    {
+        if(strcmp(sendline, "add interface\n") == 0) {
+            printf("Adding new interface, please enter the new address: \n");
+            if (fgets(sendline, 1000,stdin) != NULL) {
+                if (wolfSSL_mpdtls_new_addr(ssl, sendline) !=SSL_SUCCESS) {
+                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
+                }
+            }
+            continue;
+        }
+        if(strcmp(sendline,"connect\n")==0){
+            char *buf = NULL;
+            wolfSSL_mpdtls_ask_connect(ssl, &buf, NULL);
+
+            printf("%s\n", buf);
+            free(buf);
+
+            int remote, host, res = 0; 
+            
+            do {
+                printf("Choose 1 address in each list and give the 2 indices as \"host[space]remote\"\n");
+                if (fgets(sendline, 1000,stdin) != NULL){
+                    res = sscanf(sendline, "%d %d", &host, &remote);
+                }
+            } while (res != 2);
+
+            if (wolfSSL_mpdtls_connect_addr(ssl, host, remote) != SSL_SUCCESS) {
+                fprintf(stderr, "wolfSSL_mpdtls_connect_addr error\n" );
+            }
+            continue;
+        }
+        if(strcmp(sendline,"change scheduling\n")==0) {
+
+            printf("1) Round Robin : every flow has the same importance\n");
+            printf("2) Optimize Latency : give more priority to flows with lower delays\n");
+            int res=0,r;
+            uint res2;
+            do {
+                printf("Choose one option among the one proposed and include the number of tokens (i[space]n) \n");
+                if (fgets(sendline, 1000,stdin) != NULL){
+                    r = sscanf(sendline, "%d %d", &res, &res2);
+                }
+            } while (r!=2 || res < 1 || res > 2);
+            switch(res) {
+                case 1:
+                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, ROUND_ROBIN, res2);
+                break;
+                case 2:
+                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, OPTIMIZE_LATENCY, res2);
+                break;
+            }
+
+        }
+        /*
+        if(strcmp(sendline, "read pipe\n") == 0) {
+            printf("Reading from the pipes...\n");
+            wolfSSL_read(ssl, sendline, sizeof(sendline)-1);
+            printf("Read %s from the pipes\n", sendline);
+            continue;
+        }
+        if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
+            perror("wolfSSL_write failed");
+        }
+        */
+
+        if(strcmp(sendline,"stats\n")==0){
+            wolfSSL_Debugging_ON();
+            wolfSSL_mpdtls_stats(ssl);
+            wolfSSL_Debugging_OFF();
+        }
+    if(strcmp(sendline,"debug on\n")==0){
+        wolfSSL_Debugging_ON();
+    }
+    if(strcmp(sendline,"debug off\n")==0){
+        wolfSSL_Debugging_OFF();
+    }
+        if(strcmp(sendline,"exit\n")==0){
+            printf("Shutting down... \n");
+            break;
+        }
+    }
+
     return NULL;
 }

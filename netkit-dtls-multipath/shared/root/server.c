@@ -52,49 +52,21 @@ int main(int argc, char *argv[]){
 }
 
 void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family){
-    int i;
     int clientfd;
     int sockfd;
-    pthread_t *server_thread[MAX_THREADS];
-    int n_thread = 0;
-    int ret;
+    ssl = 0;
+    sockfd = createSocket(serv_addr, family);
+    printf("Current socket : %d \n",sockfd);
+    clientfd = udp_read_connect(sockfd, family);
+    answerClient(clientfd);
 
-    while (1) {
-        ssl = 0;
-
-        sockfd = createSocket(serv_addr, family);
-        printf("Current socket : %d \n",sockfd);
-
-        clientfd = udp_read_connect(sockfd, family);
-        if (clientfd == -1){
-            perror("udp accept failed");
-            break;
-        }else if(n_thread < MAX_THREADS){
-            //we create a new thread to handle the communication
-            server_thread[n_thread] = (pthread_t *) malloc(sizeof(pthread_t));
-            if((ret = pthread_create(server_thread[n_thread], NULL, answerClient, (void *) &clientfd))!=0) {
-                fprintf (stderr, "%s", strerror (ret));
-            }
-            n_thread++;
-        }
-        /*
-        printf("Close socket %d (parent) \n",sockfd);
-        close(sockfd);
-        */
-    }
-    //clean all threads
-    printf("WAITING FOR THREADS TO JOIN\n");
-    for(i=0; i< n_thread; i++) {
-        pthread_join(*server_thread[i],NULL);
-    }
 
 }
 
-void *answerClient(void* _fd) {
+void answerClient(int clientfd) {
     WOLFSSL *ssl;
-    int clientfd = *((int*) _fd);
     int tunfd = init_tun();
-    printf("Child created with socket %d \n",clientfd);               
+
     if( (ssl = wolfSSL_new(ctx)) == NULL) {
 
        fprintf(stderr, "wolfSSL_new error SSL \n" );
@@ -115,7 +87,6 @@ void *answerClient(void* _fd) {
         printf("SSL_accept failed : %s \n",errorString);
         wolfSSL_free(ssl);
         close(clientfd);
-        return NULL;
     }
 
     /*
@@ -130,27 +101,36 @@ void *answerClient(void* _fd) {
         fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
         exit(EXIT_FAILURE);
     }
-    //*/
-
+    */
     printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
-    printf("Server child waiting for incoming msg \n");
+    printf("Server waiting for incoming msg \n");
 
     ReaderTunArgs args;
     args.tunfd = tunfd;
     args.ssl = ssl;
-    pthread_t reader;
+    pthread_t reader, writer, tun;
 
     int ret;
     if((ret = pthread_create(&reader, NULL, readIncoming, (void *) &args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
-    readFromTun(&args);
+    if((ret = pthread_create(&writer, NULL, sendLines, (void *) ssl))!=0) {
+        fprintf (stderr, "%s", strerror (ret));
+    }
+
+
+    if((ret = pthread_create(&tun, NULL, readFromTun, (void *) &args))!=0) {
+        fprintf (stderr, "%s", strerror (ret));
+    }
     
-    printf("Server thread exiting \n");
+
+    pthread_join(writer, NULL);
+    pthread_cancel(reader);
+    pthread_cancel(tun);
+    
     close_tun(tunfd);
     close(clientfd);
-    return NULL;
 }
 /**
 * Create the socket with adress serv_addr and family family (AF_INET or AF_INET6)
@@ -234,7 +214,7 @@ void InitiateContext(){
             perror("can't load ca file, Please run from wolfSSL home dir");
 
     //Cipher suite
-    if(wolfSSL_CTX_set_cipher_list(ctx, "AES256-SHA")!=SSL_SUCCESS){
+    if(wolfSSL_CTX_set_cipher_list(ctx, "ECDHE-RSA-AES256-SHA:AES256-SHA")!=SSL_SUCCESS){
         fprintf(stderr, "WOLFSSl Cipher List error \n");
         exit(EXIT_FAILURE);
     }

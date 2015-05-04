@@ -13,7 +13,7 @@ void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family);
 /**
 * Interact with one particular client
 */
-void* answerClient(void*);
+void answerClient(int);
 
 /**
 * Method to initialize the DTLS handshake and keys exchange
