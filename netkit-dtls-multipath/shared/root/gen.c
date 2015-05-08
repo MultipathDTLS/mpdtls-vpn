@@ -3,7 +3,7 @@
 
 
 void *readFromTun(void* _args) {
-    ReaderTunArgs *args = (ReaderTunArgs *)_args;
+    ReaderArgs *args = (ReaderArgs *)_args;
     WOLFSSL *ssl = args->ssl;
     int tunfd = args->tunfd;
     packet_t u;
@@ -29,7 +29,7 @@ void *readFromTun(void* _args) {
 }
 
 void *readIncoming(void* _args){
-    ReaderTunArgs *args = (ReaderTunArgs *)_args;
+    ReaderArgs *args = (ReaderArgs *)_args;
     WOLFSSL *ssl = args->ssl;
     int tunfd = args->tunfd;
     packet_t u;
@@ -59,8 +59,10 @@ void *readIncoming(void* _args){
 /**
 * Send text input through the ssl object
 */
-void *sendLines(void* _ssl){
-    WOLFSSL *ssl = (WOLFSSL *)_ssl;
+void *sendLines(void* _args){
+    WriterArgs *args = (WriterArgs *)_args;
+    WOLFSSL *ssl = args->ssl;
+    int debug = args->debug;
     char sendline[1000];
     while (fgets(sendline, 1000,stdin) != NULL)
     {
@@ -116,22 +118,12 @@ void *sendLines(void* _ssl){
             }
 
         }
-        /*
-        if(strcmp(sendline, "read pipe\n") == 0) {
-            printf("Reading from the pipes...\n");
-            wolfSSL_read(ssl, sendline, sizeof(sendline)-1);
-            printf("Read %s from the pipes\n", sendline);
-            continue;
-        }
-        if(wolfSSL_write(ssl, sendline, strlen(sendline)) != strlen(sendline)){
-            perror("wolfSSL_write failed");
-        }
-        */
 
         if(strcmp(sendline,"stats\n")==0){
             wolfSSL_Debugging_ON();
             wolfSSL_mpdtls_stats(ssl);
-            wolfSSL_Debugging_OFF();
+            if(!debug)
+                wolfSSL_Debugging_OFF();
         }
     if(strcmp(sendline,"debug on\n")==0){
         wolfSSL_Debugging_ON();

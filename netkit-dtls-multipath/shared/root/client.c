@@ -5,20 +5,41 @@ int main(int argc, char *argv[]){
     struct addrinfo *res;
     struct addrinfo hints;
     sockaddr *addr;
-    char *ip_serv = "127.0.0.1"; //default server address
+
+    //default values
+    char *ip_serv = "127.0.0.1";
     char *vpn_ip = "10.0.0.2";
     char *vpn_sub = "10.0.0.0/24";
 
     pthread_t reader, writer, tun;
-    
-    if(argc > 3){
-        ip_serv = argv[3];
-    }
-    if (argc > 2) {
-        vpn_ip = argv[1];
-        vpn_sub = argv[2];
-    }
 
+    int c;
+    int debug = 0;
+    while((c = getopt(argc, argv, "hds:v:n:")) != -1) {
+        switch(c)
+        {
+            case 's' :
+                ip_serv = optarg;
+                break;
+            case 'v':
+                vpn_ip = optarg;
+                break;
+            case 'n' :
+                vpn_sub = optarg;
+                break;
+            case 'd' :
+                debug = 1;
+                break;
+            case 'h' :
+                printf("Usage : ./client [-s serverIP/domain] [-v vpn_ip] [-n vpn_network] [options]\n");
+                printf("Ex : ./client example.org -v 10.0.0.2 -n 10.0.0.0/24 \n\n");
+                printf("Available options : \n");
+                printf("\t -d \t\t Debug mode : will display the debug messages\n");
+                printf("\t -h \t\t Display this help message \n");
+                return EXIT_SUCCESS;
+        }
+    }
+    
     /* getaddrinfo() case.  It can handle multiple addresses. */
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = PF_UNSPEC;
@@ -43,52 +64,37 @@ int main(int argc, char *argv[]){
     initConfig();
     inet_aton(vpn_ip, &config.vpnIP);
     config.network = vpn_sub;
-
-    /*for debug purposes */
     int tunfd = init_tun();
 
+
     wolfSSL_Init();// Initialize wolfSSL
-    //wolfSSL_Debugging_ON(); //enable debug
+    if(debug)
+        wolfSSL_Debugging_ON(); //enable debug inside wolfssl
     WOLFSSL* ssl;
     WOLFSSL_CTX* ctx = NULL;
-    //WOLFSSL_SESSION *sess;
     int sockfd;
 
     ssl = InitiateDTLS(ctx,addr,&sockfd, NULL);
 
-    //sess = wolfSSL_get_session(ssl);
+    ReaderArgs r_args;
+    r_args.tunfd = tunfd;
+    r_args.ssl = ssl;
 
-    /*//simulate deco/reco
-
-    printf("SIMULATE LOSS OF CONNECTION\n");
-    sleep(10);
-
-    ssl = InitiateDTLS(ctx,addr,&sockfd, sess); 
-    //*/
-    //Add new addresses if needed
-    /*
-    if (wolfSSL_mpdtls_new_addr(ssl, "127.0.0.3") !=SSL_SUCCESS) {
-                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-                
-    }
-    //*/
-
-    ReaderTunArgs args;
-    args.tunfd = tunfd;
-    args.ssl = ssl;
+    WriterArgs w_args;
+    w_args.ssl = ssl;
+    w_args.debug = debug;
 
     int ret;
-    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) &args))!=0) {
+    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) &r_args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
-    if((ret = pthread_create(&writer, NULL, sendLines, (void *) ssl))!=0) {
+    if((ret = pthread_create(&writer, NULL, sendLines, (void *) &w_args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
 
-    if((ret = pthread_create(&tun, NULL, readFromTun, (void *) &args))!=0) {
+    if((ret = pthread_create(&tun, NULL, readFromTun, (void *) &r_args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
     
@@ -102,7 +108,7 @@ int main(int argc, char *argv[]){
     wolfSSL_CTX_free(ctx);
     wolfSSL_Cleanup();
     freeConfig();
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /** INITIATE the connection and return the ssl object corresponding

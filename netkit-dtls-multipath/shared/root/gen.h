@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -67,11 +68,17 @@ struct configuration config;
 
 void *readIncoming(void *);
 void *readFromTun(void*);
-void *sendLines(void* ssl);
+void *sendLines(void*);
 
-typedef struct ReaderTunArgs{
+typedef struct ReaderArgs{
     WOLFSSL *ssl;
     int tunfd;
-} ReaderTunArgs;
+    int debug;
+} ReaderArgs;
+
+typedef struct WriterArgs{
+    WOLFSSL *ssl;
+    int debug;
+} WriterArgs;
 
 #endif /*GEN_H_*/

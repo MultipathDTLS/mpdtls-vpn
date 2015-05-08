@@ -17,12 +17,38 @@ int main(int argc, char *argv[]){
     char *vpn_ip = "10.0.0.2";
     char *vpn_sub = "10.0.0.0/24";
 
-    if(argc > 3){
-        family = AF_INET6;
-    } 
-    if (argc > 2) {
-        vpn_ip = argv[1];
-        vpn_sub = argv[2];
+
+    int c;
+    int debug = 0;
+    int multipath = 1;
+    while((c = getopt(argc, argv, "hdfsv:n:")) != -1) {
+        switch(c)
+        {
+            case 'v':
+                vpn_ip = optarg;
+                break;
+            case 'n' :
+                vpn_sub = optarg;
+                break;
+            case 'l' :
+                family = AF_INET6;
+                break;
+            case 'd' :
+                debug = 1;
+                break;
+            case 's' :
+                multipath = 0;
+                break;
+            case 'h' :
+                printf("Usage : ./server [-v vpn_ip] [-n vpn_network] [options]\n");
+                printf("Ex : ./server -v 10.0.0.2 -n 10.0.0.0/24 \n\n");
+                printf("Available options : \n");
+                printf("\t -s \t\t use Simple DTLS (without Multipath)\n");
+                printf("\t -f \t\t Run the server on IPv6 family socket\n");
+                printf("\t -d \t\t Debug mode : will display the debug messages\n");
+                printf("\t -h \t\t Display this help message \n");
+                return EXIT_SUCCESS;
+        }
     }
 
     /** Pointers to be freed later **/
@@ -32,13 +58,14 @@ int main(int argc, char *argv[]){
     config.network = vpn_sub;
 
     wolfSSL_Init();// Initialize wolfSSL
-    wolfSSL_Debugging_ON(); //enable debug
+    if(debug)
+        wolfSSL_Debugging_ON(); //enable debug
     WOLFSSL* ssl = NULL;
 
     sockaddr *serv_addr = NULL;
 
     InitiateContext();
-    answerClients(ssl,serv_addr, family);
+    answerClient(ssl,serv_addr, family, debug, multipath);
 
     printf("Shutdown server and clean...");
     free(serv_addr);
@@ -48,23 +75,16 @@ int main(int argc, char *argv[]){
     wolfSSL_Cleanup();
     freeConfig();
     printf(" DONE\n");
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family){
+void answerClient(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family, int debug, int mp) {
     int clientfd;
     int sockfd;
-    ssl = 0;
+
     sockfd = createSocket(serv_addr, family);
-    printf("Current socket : %d \n",sockfd);
+    printf("Server ready and waiting for connection ... \n");
     clientfd = udp_read_connect(sockfd, family);
-    answerClient(clientfd);
-
-
-}
-
-void answerClient(int clientfd) {
-    WOLFSSL *ssl;
     int tunfd = init_tun();
 
     if( (ssl = wolfSSL_new(ctx)) == NULL) {
@@ -74,8 +94,8 @@ void answerClient(int clientfd) {
        exit(EXIT_FAILURE);
 
     }
-
-    wolfSSL_UseMultiPathDTLS(ssl, 0x01);
+    if(mp)
+        wolfSSL_UseMultiPathDTLS(ssl, 0x01);
     wolfSSL_set_fd(ssl, clientfd);
 
 
@@ -105,22 +125,27 @@ void answerClient(int clientfd) {
     printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
     printf("Server waiting for incoming msg \n");
 
-    ReaderTunArgs args;
-    args.tunfd = tunfd;
-    args.ssl = ssl;
+    ReaderArgs r_args;
+    r_args.tunfd = tunfd;
+    r_args.ssl = ssl;
+
+    WriterArgs w_args;
+    w_args.ssl = ssl;
+    w_args.debug = debug;
+
     pthread_t reader, writer, tun;
 
     int ret;
-    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) &args))!=0) {
+    if((ret = pthread_create(&reader, NULL, readIncoming, (void *) &r_args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
-    if((ret = pthread_create(&writer, NULL, sendLines, (void *) ssl))!=0) {
+    if((ret = pthread_create(&writer, NULL, sendLines, (void *) &w_args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
 
 
-    if((ret = pthread_create(&tun, NULL, readFromTun, (void *) &args))!=0) {
+    if((ret = pthread_create(&tun, NULL, readFromTun, (void *) &r_args))!=0) {
         fprintf (stderr, "%s", strerror (ret));
     }
     

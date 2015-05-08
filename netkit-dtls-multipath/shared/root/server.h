@@ -6,14 +6,10 @@
 void InitiateContext();
 
 /**
-* Wait for clients to connect and initiate the connection
+* Wait for client to connect and initiate the connection
 */
-void answerClients(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family);
+void answerClient(WOLFSSL*, sockaddr*,unsigned short, int, int);
 
-/**
-* Interact with one particular client
-*/
-void answerClient(int);
 
 /**
 * Method to initialize the DTLS handshake and keys exchange
