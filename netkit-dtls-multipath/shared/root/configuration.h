@@ -54,6 +54,5 @@ struct configuration {
 };
 
 extern void initConfig(void);
-extern void freeConfig(void);
 
 #endif /*CONFIGURATION_H_*/

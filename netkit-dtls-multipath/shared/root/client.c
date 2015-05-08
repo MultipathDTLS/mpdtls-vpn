@@ -54,6 +54,7 @@ int main(int argc, char *argv[]){
              printf("Family detected : %d \n",addr->sa_family);
         }else{
             printf("No address found \n");
+            freeaddrinfo(res);
             return EXIT_FAILURE;
         }
     }
@@ -66,6 +67,12 @@ int main(int argc, char *argv[]){
     config.network = vpn_sub;
     int tunfd = init_tun();
 
+    if(tunfd < 0) {
+        printf("Impossible to open the TUN interface, you must have the right permissions \n");
+        freeaddrinfo(res);
+        return EXIT_FAILURE;
+    }
+
 
     wolfSSL_Init();// Initialize wolfSSL
     if(debug)
@@ -75,6 +82,9 @@ int main(int argc, char *argv[]){
     int sockfd;
 
     ssl = InitiateDTLS(ctx,addr,&sockfd, NULL);
+
+    //we don't need the server addr anymore
+    freeaddrinfo(res);
 
     ReaderArgs r_args;
     r_args.tunfd = tunfd;
@@ -107,7 +117,7 @@ int main(int argc, char *argv[]){
     wolfSSL_free(ssl); 
     wolfSSL_CTX_free(ctx);
     wolfSSL_Cleanup();
-    freeConfig();
+    printf("DONE\n");
     return EXIT_SUCCESS;
 }
 

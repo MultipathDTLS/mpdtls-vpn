@@ -181,10 +181,3 @@ static int get_ipv4_broadcast(uint32_t vpnip, int len, uint32_t *broadcast,
     *broadcast = (vpnip & *netmask) | ~*netmask;
     return 0;
 }*/
-
-void freeConfig() {
-    if (config.network) free(config.network);
-    if (config.tun_device) free(config.tun_device);
-    if (config.tap_id) free(config.tap_id);
-}
-

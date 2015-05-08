@@ -30,7 +30,7 @@ int main(int argc, char *argv[]){
             case 'n' :
                 vpn_sub = optarg;
                 break;
-            case 'l' :
+            case 'f' :
                 family = AF_INET6;
                 break;
             case 'd' :
@@ -73,7 +73,6 @@ int main(int argc, char *argv[]){
     wolfSSL_free(ssl); 
     wolfSSL_CTX_free(ctx);
     wolfSSL_Cleanup();
-    freeConfig();
     printf(" DONE\n");
     return EXIT_SUCCESS;
 }
@@ -82,10 +81,16 @@ void answerClient(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family, int 
     int clientfd;
     int sockfd;
 
+    int tunfd = init_tun();
+    if(tunfd < 0) {
+        printf("Impossible to open the TUN interface, you must have the right permissions \n");
+        return;
+    }
+
     sockfd = createSocket(serv_addr, family);
     printf("Server ready and waiting for connection ... \n");
     clientfd = udp_read_connect(sockfd, family);
-    int tunfd = init_tun();
+
 
     if( (ssl = wolfSSL_new(ctx)) == NULL) {
 
