@@ -8,7 +8,7 @@ int main(int argc, char *argv[]){
 
     //default values
     char *ip_serv = "127.0.0.1";
-    char *vpn_ip = "10.0.0.2";
+    char *vpn_ip = "10.0.0.1";
     char *vpn_sub = "10.0.0.0/24";
 
     pthread_t reader, writer, tun;

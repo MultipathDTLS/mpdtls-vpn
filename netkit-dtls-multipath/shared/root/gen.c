@@ -100,6 +100,7 @@ void *sendLines(void* _args){
 
             printf("1) Round Robin : every flow has the same importance\n");
             printf("2) Optimize Latency : give more priority to flows with lower delays\n");
+            printf("3) Optimize losses : give more priority to reliability\n");
             int res=0,r;
             uint res2;
             do {
@@ -107,13 +108,16 @@ void *sendLines(void* _args){
                 if (fgets(sendline, 1000,stdin) != NULL){
                     r = sscanf(sendline, "%d %d", &res, &res2);
                 }
-            } while (r!=2 || res < 1 || res > 2);
+            } while (r!=2 || res < 1 || res > 3);
             switch(res) {
                 case 1:
                     wolfSSL_mpdtls_modify_scheduler_policy(ssl, ROUND_ROBIN, res2);
                 break;
                 case 2:
                     wolfSSL_mpdtls_modify_scheduler_policy(ssl, OPTIMIZE_LATENCY, res2);
+                break;
+                case 3:
+                    wolfSSL_mpdtls_modify_scheduler_policy(ssl, OPTIMIZE_LOSS, res2);
                 break;
             }
 
