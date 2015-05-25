@@ -1,2 +1,8 @@
 *~
 *.disk
+client
+server
+*.sublime-workspace
+*.log
+*.pcap
+*.sublime-project
