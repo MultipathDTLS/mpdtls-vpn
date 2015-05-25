@@ -1,6 +1,7 @@
 # mpdtls-vpn
 
 A simple VPN application using Multipath DTLS
+[![DOI](https://zenodo.org/badge/13220/MultipathDTLS/mpdtls-vpn.svg)](http://dx.doi.org/10.5281/zenodo.17920)
 
 
 ## Installation
