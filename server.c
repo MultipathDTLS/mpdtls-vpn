@@ -114,19 +114,13 @@ void answerClient(WOLFSSL *ssl, sockaddr *serv_addr, unsigned short family, int 
         close(clientfd);
     }
 
-    /*
+    /* How to add a new IP address for the current connection
     if (wolfSSL_mpdtls_new_addr(ssl, "::1") !=SSL_SUCCESS) {
         fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
         exit(EXIT_FAILURE);
     }
     */
-
-    /*
-    if (wolfSSL_mpdtls_new_addr(ssl, "192.168.3.101") !=SSL_SUCCESS) {
-        fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-        exit(EXIT_FAILURE);
-    }
-    */
+    
     printf("Check for mpdtls extension : %d \n", wolfSSL_mpdtls(ssl));
     printf("Server waiting for incoming msg \n");
 
@@ -223,14 +217,6 @@ void InitiateContext(){
         fprintf(stderr, "wolfSSL_CTX_new error \n");
         exit(EXIT_FAILURE);
     }
-
-    /*
-    if (wolfSSL_mpdtls_new_addr_CTX(ctx, "127.0.0.3") !=SSL_SUCCESS) {
-                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-                
-    }
-    //*/
 
     //Certs
 
