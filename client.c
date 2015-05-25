@@ -134,21 +134,12 @@ WOLFSSL* InitiateDTLS(WOLFSSL_CTX *ctx, sockaddr *serv_addr, int *sockfd, WOLFSS
         exit(EXIT_FAILURE);
     }
 
-    //*
+    /* Example of how to add a new interface in the context
     if (wolfSSL_mpdtls_new_addr_CTX(ctx, "11.0.1.1") !=SSL_SUCCESS) {
                     fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
                     exit(EXIT_FAILURE);
     }
-    if (wolfSSL_mpdtls_new_addr_CTX(ctx, "11.0.2.1") !=SSL_SUCCESS) {
-                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-    }
-    if (wolfSSL_mpdtls_new_addr_CTX(ctx, "11.0.3.1") !=SSL_SUCCESS) {
-                    fprintf(stderr, "wolfSSL_mpdtls_new_addr error \n" );
-                    exit(EXIT_FAILURE);
-    }
-
-    //*/
+    */
 
     if (wolfSSL_CTX_set_cipher_list(ctx, "ECDHE-RSA-AES256-SHA:AES256-SHA") != SSL_SUCCESS)
         perror("client can't set cipher list 1");
